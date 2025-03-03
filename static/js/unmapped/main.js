@@ -1,5 +1,8 @@
 /**
  * Main JavaScript functionality for the Unmapped Records Review tool
+ * - Added fixed implementation for "NOT FOUND IN FILEMAKER" button
+ * - Added Escalate button with note entry functionality
+ * - Improves error handling and feedback
  */
 
 let currentFileName = null;
@@ -34,31 +37,24 @@ function setupEventListeners() {
     // NOT FOUND button
     const notFoundButton = document.getElementById('notFoundButton');
     if (notFoundButton) {
-        notFoundButton.addEventListener('click', async function() {
-            const filename = document.getElementById('orderIdInput').value;
-            if (!filename) {
-                showAlert('Please enter an Order ID before proceeding.', 'warning');
-                return;
-            }
-
-            try {
-                const response = await fetch(`/unmapped/api/not_found`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ filename })
-                });
-
-                const result = await response.json();
-                if (response.ok) {
-                    showAlert('File sent successfully.', 'success');
-                } else {
-                    showAlert(result.error || 'An error occurred.', 'error');
-                }
-            } catch (error) {
-                showAlert('An error occurred while sending the file.', 'error');
-            }
+        notFoundButton.addEventListener('click', function() {
+            markAsNotFound();
+        });
+    }
+    
+    // ESCALATE button
+    const escalateButton = document.getElementById('escalateButton');
+    if (escalateButton) {
+        escalateButton.addEventListener('click', function() {
+            showEscalateModal();
+        });
+    }
+    
+    // ESCALATE submit button in modal
+    const escalateSubmitButton = document.getElementById('escalateSubmitButton');
+    if (escalateSubmitButton) {
+        escalateSubmitButton.addEventListener('click', function() {
+            submitEscalation();
         });
     }
 }
@@ -129,8 +125,10 @@ async function loadFile(filename) {
         // Pre-populate the search form
         prepopulateSearch(filename);
         
-        // Enable the save button
+        // Enable buttons
         document.getElementById('saveButton').disabled = false;
+        document.getElementById('notFoundButton').disabled = false;
+        document.getElementById('escalateButton').disabled = false;
         
         // Highlight the selected file in the list
         const fileItems = document.querySelectorAll('#fileList a');
@@ -329,6 +327,200 @@ async function performSearch() {
 }
 
 /**
+ * Mark the current file as "Not Found in FileMaker"
+ * Moves the file to the review2 folder without requiring Order ID
+ */
+async function markAsNotFound() {
+    try {
+        if (!currentFileName || !currentData) {
+            showAlert('No file loaded', 'error');
+            return;
+        }
+        
+        // Show processing indicator
+        document.getElementById('notFoundButton').disabled = true;
+        document.getElementById('notFoundButton').innerHTML = 'Processing...';
+        document.getElementById('saveButton').disabled = true;
+        document.getElementById('escalateButton').disabled = true;
+        
+        // Send the request to move the file to review2 folder
+        const response = await fetch('/unmapped/api/not_found', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                filename: currentFileName,
+                content: currentData
+            }),
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Operation failed');
+        }
+        
+        // Show success message
+        showAlert('File marked as Not Found and moved to review2 folder', 'success');
+        
+        // Reload the file list
+        loadFiles();
+        
+        // Clear the current file
+        currentFileName = null;
+        currentData = null;
+        
+        // Reset the UI
+        document.getElementById('recordDetails').innerHTML = '<div class="alert alert-info">Select a file to review</div>';
+        document.getElementById('pdfFrame').src = 'about:blank';
+        document.getElementById('headerImage').src = '';
+        document.getElementById('serviceImage').src = '';
+        document.getElementById('orderIdInput').value = '';
+        document.getElementById('filemakerInput').value = '';
+        document.getElementById('saveButton').disabled = true;
+        document.getElementById('notFoundButton').disabled = true;
+        document.getElementById('notFoundButton').innerHTML = 'NOT FOUND IN FILEMAKER';
+        document.getElementById('escalateButton').disabled = true;
+        
+    } catch (error) {
+        console.error('Not Found operation error:', error);
+        showAlert(`Error: ${error.message}`, 'error');
+        document.getElementById('notFoundButton').disabled = false;
+        document.getElementById('notFoundButton').innerHTML = 'NOT FOUND IN FILEMAKER';
+        document.getElementById('saveButton').disabled = false;
+        document.getElementById('escalateButton').disabled = false;
+    }
+}
+
+/**
+ * Show the escalation modal with textarea for notes
+ */
+function showEscalateModal() {
+    if (!currentFileName || !currentData) {
+        showAlert('No file loaded', 'error');
+        return;
+    }
+    
+    // Clear previous notes
+    document.getElementById('escalationNote').value = '';
+    
+    // Show the modal
+    const escalateModal = new bootstrap.Modal(document.getElementById('escalateModal'));
+    escalateModal.show();
+}
+
+/**
+ * Submit the escalation with notes
+ */
+async function submitEscalation() {
+    try {
+        const notes = document.getElementById('escalationNote').value.trim();
+        
+        if (!notes) {
+            showAlert('Please enter escalation notes', 'warning');
+            return;
+        }
+        
+        // Disable buttons and show loading state
+        document.getElementById('escalateSubmitButton').disabled = true;
+        document.getElementById('escalateSubmitButton').innerHTML = 
+            '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+        
+        // Add escalation notes to the data
+        if (!currentData.escalation) {
+            currentData.escalation = {};
+        }
+        currentData.escalation.notes = notes;
+        currentData.escalation.timestamp = new Date().toISOString();
+        
+        // Send the request
+        const response = await fetch('/unmapped/api/escalate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                filename: currentFileName,
+                content: currentData,
+                notes: notes
+            }),
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Escalation failed');
+        }
+        
+        // Hide the modal
+        const escalateModal = bootstrap.Modal.getInstance(document.getElementById('escalateModal'));
+        escalateModal.hide();
+        
+        // Show success message
+        showAlert('File escalated successfully with notes', 'success');
+        
+        // Reload the file list
+        loadFiles();
+        
+        // Clear the current file
+        currentFileName = null;
+        currentData = null;
+        
+        // Reset the UI
+        document.getElementById('recordDetails').innerHTML = '<div class="alert alert-info">Select a file to review</div>';
+        document.getElementById('pdfFrame').src = 'about:blank';
+        document.getElementById('headerImage').src = '';
+        document.getElementById('serviceImage').src = '';
+        document.getElementById('orderIdInput').value = '';
+        document.getElementById('filemakerInput').value = '';
+        document.getElementById('saveButton').disabled = true;
+        document.getElementById('notFoundButton').disabled = true;
+        document.getElementById('escalateButton').disabled = true;
+        
+    } catch (error) {
+        console.error('Escalation error:', error);
+        showAlert(`Error escalating: ${error.message}`, 'error');
+        
+        // Reset buttons
+        document.getElementById('escalateSubmitButton').disabled = false;
+        document.getElementById('escalateSubmitButton').innerHTML = 'Submit Escalation';
+    }
+}
+
+/**
+ * Show an alert message that automatically disappears
+ * @param {string} message - The message to display
+ * @param {string} type - Alert type ('success', 'error', 'info', 'warning')
+ * @param {number} duration - Duration in milliseconds
+ */
+function showAlert(message, type = 'success', duration = 3000) {
+    // Create the alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
+    
+    // Add the message
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // Add to the document
+    document.body.appendChild(alertDiv);
+    
+    // Remove after the specified duration
+    setTimeout(() => {
+        alertDiv.classList.remove('show');
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 300);
+    }, duration);
+}
+
+/**
  * Display search results in the UI
  * @param {Array} results - Search results to display
  */
@@ -430,6 +622,8 @@ async function saveChanges() {
         // Show saving indicator
         document.getElementById('saveButton').disabled = true;
         document.getElementById('saveButton').textContent = 'Saving...';
+        document.getElementById('notFoundButton').disabled = true;
+        document.getElementById('escalateButton').disabled = true;
         
         // Send the updated data to the server
         const response = await fetch('/unmapped/api/save', {
@@ -450,8 +644,8 @@ async function saveChanges() {
             throw new Error(result.error || 'Save failed');
         }
         
-        // Show success message
-        alert('Changes saved successfully!');
+        // Show success message using the new showAlert function
+        showAlert('Changes saved successfully!', 'success');
         
         // Reload the file list
         loadFiles();
@@ -469,12 +663,16 @@ async function saveChanges() {
         document.getElementById('filemakerInput').value = '';
         document.getElementById('saveButton').disabled = true;
         document.getElementById('saveButton').textContent = 'Save Changes';
+        document.getElementById('notFoundButton').disabled = true;
+        document.getElementById('escalateButton').disabled = true;
         
     } catch (error) {
         console.error('Save error:', error);
-        alert(`Error saving changes: ${error.message}`);
+        showAlert(`Error saving changes: ${error.message}`, 'error');
         document.getElementById('saveButton').disabled = false;
         document.getElementById('saveButton').textContent = 'Save Changes';
+        document.getElementById('notFoundButton').disabled = false;
+        document.getElementById('escalateButton').disabled = false;
     }
 }
 

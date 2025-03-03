@@ -59,6 +59,11 @@
     border-left: 3px solid #0d6efd;
 }
 
+/* Remaining files badge */
+.fs-6 {
+    font-size: 1rem !important;
+}
+
 /* Navigation buttons */
 #prevBtn, #nextBtn {
     min-width: 80px;

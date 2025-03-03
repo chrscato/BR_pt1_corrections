@@ -62,8 +62,8 @@ async function loadFile(filename) {
         currentData = result.data;
         originalData = JSON.parse(JSON.stringify(result.data)); // Deep copy of original data
         
-        // Update file info
-        fileInfo.innerHTML = `<strong>Current File:</strong> ${filename}`;
+        // Update file info with remaining files count
+        updateFileInfo();
         
         // Display the data in the UI
         displayData();
@@ -415,7 +415,19 @@ function updateFileInfo() {
         return;
     }
     
-    info.innerHTML = `<strong>File ${currentFileIndex + 1} of ${files.length}:</strong> ${files[currentFileIndex]}`;
+    const remainingFiles = files.length;
+    
+    // Create a more prominent display with the remaining files count
+    info.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <strong>File ${currentFileIndex + 1} of ${files.length}:</strong> ${files[currentFileIndex]}
+            </div>
+            <div class="ms-3">
+                <span class="badge bg-primary rounded-pill fs-6">${remainingFiles} remaining</span>
+            </div>
+        </div>
+    `;
     
     // Update button states
     document.getElementById('prevBtn').disabled = currentFileIndex === 0;

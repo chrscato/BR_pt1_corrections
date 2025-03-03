@@ -5,6 +5,8 @@ from flask import Blueprint, jsonify, request, render_template, send_file
 import json
 import config
 from pathlib import Path
+import shutil
+import datetime
 
 # Import utilities
 from pdf_utils import get_pdf_path, extract_pdf_region
@@ -141,19 +143,102 @@ def save_file():
 
 @unmapped_bp.route('/api/not_found', methods=['POST'])
 def not_found():
-    """Handle the NOT FOUND IN FILEMAKER action."""
+    """
+    Handle the NOT FOUND IN FILEMAKER action.
+    Moves the file to the review2 folder without requiring any additional information.
+    """
     try:
         data = request.json
-        filename = validate_filename(data['filename'])
-        file_path = config.BASE_PATH / r"scripts\VAILIDATION\data\extracts\review2" / filename
-
-        # Simulate JSON data for demonstration
-        json_data = {"message": "This is a test JSON for NOT FOUND IN FILEMAKER."}
-
-        # Save the JSON data to the specified path
-        with open(file_path, 'w') as f:
-            json.dump(json_data, f, indent=2)
-
-        return jsonify({'message': 'File sent successfully.'})
+        filename = validate_filename(data.get('filename', ''))
+        
+        if not filename:
+            return jsonify({'error': 'Filename is required'}), 400
+            
+        # Source file path
+        source_path = config.FOLDERS['UNMAPPED_FOLDER'] / filename
+        
+        # Ensure the review2 folder exists
+        review2_folder = config.BASE_PATH / r"scripts\VAILIDATION\data\extracts\review2"
+        review2_folder.mkdir(parents=True, exist_ok=True)
+        
+        # Target file path
+        target_path = review2_folder / filename
+        
+        # Move the file to the review2 folder
+        if source_path.exists():
+            # Read the original file content
+            with open(source_path, 'r') as f:
+                content = json.load(f)
+                
+            # Write to the target location
+            with open(target_path, 'w') as f:
+                json.dump(content, f, indent=2)
+                
+            # Remove from unmapped folder
+            source_path.unlink()
+            
+            return jsonify({'message': 'File marked as not found and moved to review2 folder'})
+        else:
+            return jsonify({'error': f'Source file not found: {filename}'}), 404
+            
     except Exception as e:
+        import traceback
+        print(f"Error in not_found: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@unmapped_bp.route('/api/escalate', methods=['POST'])
+def escalate():
+    """
+    Handle the ESCALATE action.
+    Adds a note to the file and moves it to the escalations folder.
+    """
+    try:
+        data = request.json
+        filename = validate_filename(data.get('filename', ''))
+        content = data.get('content', {})
+        notes = data.get('notes', '')
+        
+        if not filename:
+            return jsonify({'error': 'Filename is required'}), 400
+            
+        if not notes:
+            return jsonify({'error': 'Escalation notes are required'}), 400
+            
+        # Source file path
+        source_path = config.FOLDERS['UNMAPPED_FOLDER'] / filename
+        
+        # Ensure the escalations folder exists
+        escalations_folder = config.BASE_PATH / r"scripts\VAILIDATION\data\extracts\escalations"
+        escalations_folder.mkdir(parents=True, exist_ok=True)
+        
+        # Target file path
+        target_path = escalations_folder / filename
+        
+        # Move the file to the escalations folder
+        if source_path.exists():
+            # Add escalation metadata if not already present
+            if not content.get('escalation'):
+                content['escalation'] = {}
+                
+            # Add notes and timestamp
+            content['escalation']['notes'] = notes
+            content['escalation']['timestamp'] = datetime.datetime.now().isoformat()
+            content['escalation']['user'] = request.environ.get('REMOTE_USER', 'unknown')
+            
+            # Write to the target location with escalation data
+            with open(target_path, 'w') as f:
+                json.dump(content, f, indent=2)
+                
+            # Remove from unmapped folder
+            source_path.unlink()
+            
+            return jsonify({'message': 'File escalated successfully'})
+        else:
+            return jsonify({'error': f'Source file not found: {filename}'}), 404
+            
+    except Exception as e:
+        import traceback
+        print(f"Error in escalate: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
