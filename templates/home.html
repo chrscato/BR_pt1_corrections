@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Medical Records Processing{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h1 class="h3 mb-0">Medical Records Processing</h1>
+            </div>
+            <div class="card-body">
+                <p class="lead">
+                    Welcome to the Medical Records Processing Tool Suite. This application helps with reviewing and processing medical records and billing information.
+                </p>
+                <p>
+                    Please select one of the available tools below to get started:
+                </p>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Unmapped Records Review Card -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h2 class="h4 mb-0">Unmapped Records Review</h2>
+                        <span class="badge bg-primary rounded-pill">{{ unmapped_count }}</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            Review and map patient records that could not be automatically matched to database records.
+                        </p>
+                        <ul>
+                            <li>Match patient records to database entries</li>
+                            <li>Update Order IDs and FileMaker numbers</li>
+                            <li>Edit patient information and service lines</li>
+                            <li>View associated PDF bills</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('unmapped.index') }}" class="btn btn-primary w-100">
+                            Launch Unmapped Records Review
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- OCR Corrections Card -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h2 class="h4 mb-0">OCR Corrections</h2>
+                        <span class="badge bg-primary rounded-pill">{{ corrections_count }}</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            Review and correct information extracted from medical bills using OCR.
+                        </p>
+                        <ul>
+                            <li>Verify and correct patient information</li>
+                            <li>Fix service line details (CPT codes, charges, etc.)</li>
+                            <li>Add missing information</li>
+                            <li>View original PDF documents</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('corrections.index') }}" class="btn btn-primary w-100">
+                            Launch OCR Corrections
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Statistics and Quick Links -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="h4 mb-0">Statistics</h2>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-6">
+                        <div class="p-3">
+                            <h3 class="h5">Unmapped Records</h3>
+                            <p class="display-4">{{ unmapped_count }}</p>
+                            <p class="text-muted">Records awaiting review</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3">
+                            <h3 class="h5">OCR Corrections</h3>
+                            <p class="display-4">{{ corrections_count }}</p>
+                            <p class="text-muted">Records needing correction</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

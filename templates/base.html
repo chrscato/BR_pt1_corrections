@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Medical Records Processing{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Common Styles -->
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+    
+    <!-- Dark Mode (conditionally loaded) -->
+    <link id="theme-stylesheet" href="{{ url_for('static', filename='css/dark-mode.css') }}" rel="stylesheet">
+    
+    <!-- Page-specific CSS -->
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('home') }}">
+                Medical Records Processing
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{{ url_for('home') }}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/unmapped' in request.path %}active{% endif %}" href="{{ url_for('unmapped.index') }}">
+                            Unmapped Records
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/corrections' in request.path %}active{% endif %}" href="{{ url_for('corrections.index') }}">
+                            OCR Corrections
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- Right-aligned items -->
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <button id="theme-toggle" class="btn btn-outline-light">
+                            <span id="theme-icon">☀️</span> <!-- Will toggle between ☀️ and 🌙 -->
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid py-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">Medical Records Processing &copy; 2025</span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Theme Toggle Script -->
+    <script>
+        // Check for saved theme preference or use default
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        
+        // Apply theme
+        function applyTheme(theme) {
+            const themeStylesheet = document.getElementById('theme-stylesheet');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (theme === 'light') {
+                themeStylesheet.disabled = true;
+                themeIcon.textContent = '🌙';
+                document.body.classList.remove('dark-mode');
+            } else {
+                themeStylesheet.disabled = false;
+                themeIcon.textContent = '☀️';
+                document.body.classList.add('dark-mode');
+            }
+            
+            localStorage.setItem('theme', theme);
+        }
+        
+        // Initialize theme
+        applyTheme(savedTheme);
+        
+        // Set up theme toggle
+        document.getElementById('theme-toggle').addEventListener('click', function() {
+            const currentTheme = localStorage.getItem('theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        });
+    </script>
+    
+    <!-- Common Scripts -->
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    
+    <!-- Page-specific Scripts -->
+    {% block scripts %}{% endblock %}
+</body>
+</html>
