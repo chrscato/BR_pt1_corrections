@@ -115,8 +115,22 @@ function showConfirmation(action) {
  */
 async function loadFiles() {
     try {
+        console.log('Attempting to fetch escalated files...');
         const response = await fetch('/escalations/api/files');
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
+        console.log('Received data:', data);
+        
+        // Check for error message from server
+        if (data.error) {
+            console.error('Server reported error:', data.error);
+        }
+        
         const fileList = document.getElementById('fileList');
         fileList.innerHTML = '';
         
@@ -127,6 +141,7 @@ async function loadFiles() {
         }
 
         if (data.files && data.files.length > 0) {
+            console.log(`Found ${data.files.length} escalated files`);
             data.files.forEach(file => {
                 const listItem = document.createElement('a');
                 listItem.className = 'list-group-item list-group-item-action list-group-item-escalated';
@@ -139,12 +154,35 @@ async function loadFiles() {
                 fileList.appendChild(listItem);
             });
         } else {
+            console.log('No escalated files found');
             fileList.innerHTML = '<div class="list-group-item">No escalated files found</div>';
+            
+            // Add information about how to create escalations
+            const infoItem = document.createElement('div');
+            infoItem.className = 'list-group-item';
+            infoItem.innerHTML = `
+                <div class="alert alert-info mb-0">
+                    <p class="mb-2"><strong>How to create an escalation:</strong></p>
+                    <ol class="mb-0">
+                        <li>Go to the Unmapped Records tool</li>
+                        <li>Select a record</li>
+                        <li>Click the "ESCALATE" button</li>
+                        <li>Enter notes and submit</li>
+                    </ol>
+                </div>
+            `;
+            fileList.appendChild(infoItem);
         }
     } catch (error) {
         console.error('Error loading files:', error);
         const fileList = document.getElementById('fileList');
-        fileList.innerHTML = '<div class="list-group-item text-danger">Error loading files</div>';
+        fileList.innerHTML = `
+            <div class="list-group-item text-danger">Error loading files: ${error.message}</div>
+            <div class="list-group-item">
+                <small>Path: /escalations/api/files</small><br>
+                <small>Check the server logs for more information.</small>
+            </div>
+        `;
     }
 }
 
@@ -162,12 +200,22 @@ async function loadFile(filename) {
         document.getElementById('matchResults').innerHTML = '';
         document.getElementById('matchCount').textContent = '0';
         
+        console.log(`Loading file: ${filename}`);
+        
         // Fetch the file data
         const response = await fetch(`/escalations/api/file/${filename}`);
-        const result = await response.json();
+        console.log('Response status:', response.status);
         
         if (!response.ok) {
-            throw new Error(result.error || 'Failed to load file');
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('Received file data');
+        
+        // Check for error message from server
+        if (result.error) {
+            throw new Error(result.error);
         }
         
         // Store current data
@@ -202,6 +250,7 @@ async function loadFile(filename) {
         console.error('Error loading file:', error);
         document.getElementById('escalationInfo').innerHTML = 
             `<div class="alert alert-danger">Error loading file: ${error.message}</div>`;
+        document.getElementById('recordDetails').innerHTML = '';
     }
 }
 
@@ -317,15 +366,21 @@ function displayRecordDetails() {
  * @param {string} filename - Name of the file to load
  */
 function loadPDF(filename) {
-    // Load the full PDF
-    const pdfFrame = document.getElementById('pdfFrame');
-    pdfFrame.src = `/escalations/api/pdf/${filename}`;
-    
-    // Load the header region
-    loadPDFRegion(filename, 'header', 'headerImage');
-    
-    // Load the service lines region
-    loadPDFRegion(filename, 'service_lines', 'serviceImage');
+    try {
+        console.log(`Loading PDF for file: ${filename}`);
+        
+        // Load the full PDF
+        const pdfFrame = document.getElementById('pdfFrame');
+        pdfFrame.src = `/escalations/api/pdf/${filename}`;
+        
+        // Load the header region
+        loadPDFRegion(filename, 'header', 'headerImage');
+        
+        // Load the service lines region
+        loadPDFRegion(filename, 'service_lines', 'serviceImage');
+    } catch (error) {
+        console.error('Error loading PDF:', error);
+    }
 }
 
 /**
@@ -336,14 +391,31 @@ function loadPDF(filename) {
  */
 async function loadPDFRegion(filename, region, imgId) {
     try {
+        console.log(`Loading PDF region ${region} for file: ${filename}`);
         const response = await fetch(`/escalations/api/pdf_region/${filename}/${region}`);
+        
+        if (!response.ok) {
+            console.error(`Failed to load PDF region: ${response.status} ${response.statusText}`);
+            return;
+        }
+        
         const data = await response.json();
+        
+        if (data.error) {
+            console.error(`Error in PDF region response: ${data.error}`);
+            return;
+        }
         
         if (data.image) {
             const imgElement = document.getElementById(imgId);
             if (imgElement) {
                 imgElement.src = data.image;
+                console.log(`Set image for ${region}`);
+            } else {
+                console.error(`Image element not found: ${imgId}`);
             }
+        } else {
+            console.error(`No image data returned for ${region}`);
         }
     } catch (error) {
         console.error(`Error loading ${region} PDF region:`, error);
@@ -356,18 +428,31 @@ async function loadPDFRegion(filename, region, imgId) {
  */
 async function prepopulateSearch(filename) {
     try {
+        console.log(`Pre-populating search for file: ${filename}`);
         const response = await fetch(`/escalations/api/extract_patient_info/${filename}`);
+        
+        if (!response.ok) {
+            console.error(`Failed to extract patient info: ${response.status} ${response.statusText}`);
+            return;
+        }
+        
         const data = await response.json();
         
-        if (response.ok) {
-            document.getElementById('firstNameSearch').value = data.first_name || '';
-            document.getElementById('lastNameSearch').value = data.last_name || '';
-            document.getElementById('dosSearch').value = data.dos || '';
-            
-            // Auto-search if we have data
-            if ((data.first_name || data.last_name) && data.dos) {
-                performSearch();
-            }
+        if (data.error) {
+            console.error(`Error in extract patient info response: ${data.error}`);
+            return;
+        }
+        
+        document.getElementById('firstNameSearch').value = data.first_name || '';
+        document.getElementById('lastNameSearch').value = data.last_name || '';
+        document.getElementById('dosSearch').value = data.dos || '';
+        
+        console.log(`Populated search form with: ${data.first_name} ${data.last_name}, DOS: ${data.dos}`);
+        
+        // Auto-search if we have data
+        if ((data.first_name || data.last_name) && data.dos) {
+            console.log('Auto-starting search with extracted data');
+            performSearch();
         }
     } catch (error) {
         console.error('Error pre-populating search:', error);
@@ -383,6 +468,8 @@ async function performSearch() {
         const lastName = document.getElementById('lastNameSearch').value;
         const dosDate = document.getElementById('dosSearch').value;
         const monthsRange = document.getElementById('monthsRange').value;
+        
+        console.log(`Performing search: ${firstName} ${lastName}, DOS: ${dosDate}, Range: ${monthsRange}`);
         
         if (!firstName && !lastName) {
             document.getElementById('searchStatus').innerHTML = 
@@ -407,12 +494,17 @@ async function performSearch() {
             }),
         });
         
-        const result = await response.json();
-        
         if (!response.ok) {
-            throw new Error(result.error || 'Search failed');
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
         }
         
+        const result = await response.json();
+        
+        if (result.error) {
+            throw new Error(result.error);
+        }
+        
+        console.log(`Search returned ${result.results ? result.results.length : 0} results`);
         displaySearchResults(result.results);
     } catch (error) {
         console.error('Search error:', error);
@@ -481,6 +573,7 @@ function displaySearchResults(results) {
  * @param {string} fileMakerRecord - FileMaker record number to apply
  */
 function applyMatch(orderId, fileMakerRecord) {
+    console.log(`Applying match: Order ID ${orderId}, FileMaker ${fileMakerRecord}`);
     document.getElementById('orderIdInput').value = orderId;
     document.getElementById('filemakerInput').value = fileMakerRecord;
     
@@ -510,6 +603,8 @@ async function resolveEscalation() {
             throw new Error('Order ID is required');
         }
         
+        console.log(`Resolving escalation for ${currentFileName} with Order ID: ${orderId}`);
+        
         // Close the modal if it's open
         const modal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
         if (modal) {
@@ -536,11 +631,17 @@ async function resolveEscalation() {
             }),
         });
         
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        
         const result = await response.json();
         
-        if (!response.ok) {
-            throw new Error(result.error || 'Resolution failed');
+        if (result.error) {
+            throw new Error(result.error);
         }
+        
+        console.log('Escalation resolved successfully');
         
         // Show success message
         showAlert('Escalation resolved successfully', 'success');
@@ -578,6 +679,8 @@ async function rejectEscalation() {
             throw new Error('Rejection reason is required');
         }
         
+        console.log(`Rejecting escalation for ${currentFileName}`);
+        
         // Close the modal if it's open
         const modal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
         if (modal) {
@@ -602,11 +705,17 @@ async function rejectEscalation() {
             }),
         });
         
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        
         const result = await response.json();
         
-        if (!response.ok) {
-            throw new Error(result.error || 'Rejection failed');
+        if (result.error) {
+            throw new Error(result.error);
         }
+        
+        console.log('Escalation rejected successfully');
         
         // Show success message
         showAlert('Escalation rejected successfully', 'success');
@@ -688,9 +797,24 @@ function showAlert(message, type = 'success', duration = 3000) {
  */
 async function debugPaths() {
     try {
+        console.log('Fetching debug paths...');
         const response = await fetch('/debug-paths');
+        
+        if (!response.ok) {
+            console.error(`Debug paths failed: ${response.status} ${response.statusText}`);
+            return;
+        }
+        
         const data = await response.json();
-        console.log('Debug paths:', data);
+        console.log('Debug paths data:', data);
+        
+        // Log specific information about escalations folder
+        if (data.folder_paths && data.folder_paths.ESCALATIONS_FOLDER) {
+            console.log('Escalations folder path:', data.folder_paths.ESCALATIONS_FOLDER);
+            console.log('Escalations folder exists:', data.folder_paths.ESCALATIONS_FOLDER_exists);
+        } else {
+            console.error('Escalations folder information not found in debug data');
+        }
     } catch (error) {
         console.error('Error fetching debug paths:', error);
     }
