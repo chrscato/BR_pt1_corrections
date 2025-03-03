@@ -64,8 +64,14 @@ async function loadFile(filename) {
         // Update file info
         fileInfo.innerHTML = `<strong>Current File:</strong> ${filename}`;
         
-        // Display the data in the UI
-        displayData();
+        // Check if displayData function exists before calling it
+        if (typeof displayData === 'function') {
+            // Display the data in the UI
+            displayData();
+        } else {
+            console.error('displayData function is not defined!');
+            fileInfo.innerHTML = `<div class="alert alert-danger">Error: displayData function is not available. Please check your JavaScript files.</div>`;
+        }
         
         // Update button states
         document.getElementById('prevBtn').disabled = currentFileIndex === 0;
@@ -98,7 +104,7 @@ async function loadPDFRegion(region) {
         // Set a loading state
         imgElement.src = '/static/img/error.png'; // Use as a loading placeholder
         
-        // First try the direct PDF region approach
+        // Use a consistent approach to fetch the region
         console.log(`Fetching region from: /corrections/api/pdf_region/${filename}/${region}`);
         const response = await fetch(`/corrections/api/pdf_region/${filename}/${region}`);
         console.log(`Response status: ${response.status}`);
@@ -108,23 +114,15 @@ async function loadPDFRegion(region) {
             console.log(`Response data received for ${region}`);
             
             if (data.image) {
-                console.log(`Image data received for ${region}, length: ${data.image.length}`);
+                // Directly set the image source - don't test it first
+                imgElement.src = data.image;
+                console.log(`Image for ${region} set`);
                 
-                // Create a new image to test if the data is valid
-                const testImg = new Image();
-                testImg.onload = function() {
-                    // Image is valid, set it to the actual element
-                    imgElement.src = data.image;
-                    console.log(`Image for ${region} loaded successfully`);
-                };
-                
-                testImg.onerror = function() {
-                    console.error(`Invalid image data for ${region}`);
+                // Add error handler in case image fails to load
+                imgElement.onerror = function() {
+                    console.error(`Error displaying image for ${region}`);
                     showPDFLink(region, filename);
                 };
-                
-                // Test the image
-                testImg.src = data.image;
             } else {
                 console.error(`No image data returned for ${region}`);
                 if (data.error) {

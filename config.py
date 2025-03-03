@@ -38,7 +38,7 @@ MAX_SEARCH_RESULTS = 50     # Maximum search results to display
 # PDF region settings (as ratios of page dimensions)
 PDF_REGIONS = {
     'header': (0, 0, 1, 0.25),       # (left, top, right, bottom)
-    'service_lines': (0, 0.25, 1, 0.8),
+    'service_lines': (0, 0.35, 1, 0.8),  # Changed from 0.25 to 0.35 to match example
     'footer': (0, 0.8, 1, 1)
 }
 

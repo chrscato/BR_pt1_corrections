@@ -105,7 +105,7 @@ def extract_pdf_region(filename, region_name):
         return f'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAAEsCAMAAABOo35HAAAAn1BMVEX///8AAADd3d3MzMypqalra2txcXF3d3eCgoKPj4+ampqmpqa5ubkQEBAgICAsLCw8PDxISEhQUFBYWFhnZ2dubm5/f3+IiIiQkJCYmJienp6lpaWwsLC9vb3Jycnr6+v19fUYGBgmJiY0NDRERERMTExiYmKDg4OLi4uTk5Obm5utra26urrDw8PQ0NDW1tbg4ODm5ub8/PwMDAwcHBzSAr3IAAAK2klEQVR42uzXgRpAQACGUW0qKrVNzVTM1Ps/m52xmXu/B+gA4GuFnzuVaqM9HsZsNfLDNpUz2k7m43Nx2vYhDWmVQBrSJnz6D0nfVHQ4R3RK15GNDSH7YAupSFvSPd/5ZiuHFKRUCVKQypCGNKQhDWlIQxrSkPaDNCqcTyENaVSSNKdxDZWQlskhDWk7pjpI47qVkIY0pCENaUhD2v+QRqVII8ZMSLA8TzA8TxA8zyWwPJeA8lwCyXMJIM8lYDzH4nkDCM+xOdw3Lp5jcbi3sXk+8+I5No+LjOY5Fod7N4rn2BQOFx3H8/YvcS7x7PU27V3GVe7nQGFQDAEEcM65nTbE1CbGDkNS4tAXDUKREYbUYsIUJi3A/7+m3q77LjQfrg+sdnb2p'
         
     try:
-        # Open the PDF
+        # Open the PDF - Using a more direct approach similar to the working example
         logger.info(f"Opening PDF: {pdf_path}")
         try:
             doc = fitz.open(pdf_path)
@@ -126,21 +126,21 @@ def extract_pdf_region(filename, region_name):
             logger.error(f"Failed to get page: {e}")
             return f'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASwAAAEsCAMAAABOo35HAAAAn1BMVEX///8AAADd3d3MzMypqalra2txcXF3d3eCgoKPj4+ampqmpqa5ubkQEBAgICAsLCw8PDxISEhQUFBYWFhnZ2dubm5/f3+IiIiQkJCYmJienp6lpaWwsLC9vb3Jycnr6+v19fUYGBgmJiY0NDRERERMTExiYmKDg4OLi4uTk5Obm5utra26urrDw8PQ0NDW1tbg4ODm5ub8/PwMDAwcHBzSAr3IAAAK2klEQVR42uzXgRpAQACGUW0qKrVNzVTM1Ps/m52xmXu/B+gA4GuFnzuVaqM9HsZsNfLDNpUz2k7m43Nx2vYhDWmVQBrSJnz6D0nfVHQ4R3RK15GNDSH7YAupSFvSPd/5ZiuHFKRUCVKQypCGNKQhDWlIQxrSkPaDNCqcTyENaVSSNKdxDZWQlskhDWk7pjpI47qVkIY0pCENaUhD2v+QRqVII8ZMSLA8TzA8TxA8zyWwPJeA8lwCyXMJIM8lYDzH4nkDCM+xOdw3Lp5jcbi3sXk+8+I5No+LjOY5Fod7N4rn2BQOFx3H8/YvcS7x7PU27V3GVe7nQGFQDAEEcM65nTbE1CbGDkNS4tAXDUKREYbUYsIUJi3A/7+m3q77LjQfrg+sdnb2p'
         
-        # Define the region rect based on config ratios
-        left, top, right, bottom = config.PDF_REGIONS[region_name]
-        region_rect = fitz.Rect(
-            page_rect.width * left,
-            page_rect.height * top,
-            page_rect.width * right,
-            page_rect.height * bottom
-        )
-        logger.info(f"Region rect for {region_name}: {region_rect}")
+        # Define region coordinates manually (like the working example)
+        # Override config settings to match the working example
+        regions = {
+            'header': fitz.Rect(0, 0, page_rect.width, page_rect.height * 0.25),
+            'service_lines': fitz.Rect(0, page_rect.height * 0.35, page_rect.width, page_rect.height * 0.8),
+            'footer': fitz.Rect(0, page_rect.height * 0.8, page_rect.width, page_rect.height)
+        }
         
-        # Extract the region as an image with higher resolution for better visibility
+        region_rect = regions[region_name]
+        logger.info(f"Using region rect for {region_name}: {region_rect}")
+        
+        # Extract the region as an image with simpler approach like the working example
         try:
             logger.info(f"Extracting pixmap for region: {region_name}")
-            # Try with a smaller matrix first
-            pix = page.get_pixmap(clip=region_rect, matrix=fitz.Matrix(1, 1))
+            pix = page.get_pixmap(clip=region_rect)  # No matrix specified like in example
             logger.info(f"Pixmap dimensions: {pix.width}x{pix.height}")
             img_data = pix.tobytes("png")
             img_base64 = base64.b64encode(img_data).decode()

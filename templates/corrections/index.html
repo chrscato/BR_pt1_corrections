@@ -36,6 +36,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/corrections/main.js') }}"></script>
-<script src="{{ url_for('static', filename='js/corrections/editor.js') }}"></script>
+<!-- Using a single combined JavaScript file to avoid loading order issues -->
+<script src="{{ url_for('static', filename='js/corrections/corrections.js') }}"></script>
 {% endblock %}

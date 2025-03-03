@@ -60,60 +60,15 @@ def get_pdf_region(filename, region):
     
     logger.info(f"PDF region request received for file: {filename}, region: {region}")
     try:
-        # Use a simpler approach similar to the example
-        safe_filename = Path(filename).stem + '.pdf'
-        pdf_path = config.FOLDERS['PDF_FOLDER'] / safe_filename
-        
-        logger.info(f"Looking for PDF at: {pdf_path}")
-        if not pdf_path.exists():
-            logger.error(f"PDF file not found: {pdf_path}")
-            # Try to find a similar PDF file
-            base_name = Path(safe_filename).stem
-            similar_pdfs = list(config.FOLDERS['PDF_FOLDER'].glob(f"*{base_name}*.pdf"))
-            if similar_pdfs:
-                pdf_path = similar_pdfs[0]
-                logger.info(f"Found similar PDF: {pdf_path}")
-            else:
-                return jsonify({'error': 'PDF not found'}), 404
-            
-        # Define regions based on page dimensions
-        logger.info(f"Opening PDF: {pdf_path}")
-        doc = fitz.open(pdf_path)
-        page = doc[0]
-        page_rect = page.rect
-        logger.info(f"Page dimensions: {page_rect.width} x {page_rect.height}")
-        
-        # Use the exact same region definitions as the example
-        regions = {
-            'header': fitz.Rect(0, 0, page_rect.width, page_rect.height * 0.25),
-            'service_lines': fitz.Rect(0, page_rect.height * 0.35, page_rect.width, page_rect.height * 0.8),
-            'footer': fitz.Rect(0, page_rect.height * 0.8, page_rect.width, page_rect.height)
-        }
-        
-        logger.info(f"Region requested: {region}")
-        logger.info(f"Region coordinates: {regions.get(region)}")
-        
-        if region not in regions:
-            logger.error(f"Invalid region: {region}")
-            return jsonify({'error': 'Invalid region'}), 400
-            
-        # Extract the region as an image
-        try:
-            logger.info(f"Extracting pixmap for region: {region}")
-            pix = page.get_pixmap(clip=regions[region])  # Use default resolution like the example
-            logger.info(f"Pixmap dimensions: {pix.width} x {pix.height}")
-            img_base64 = base64.b64encode(pix.tobytes("png")).decode()
-            
-            logger.info(f"Successfully extracted region {region} from {filename}")
-            return jsonify({'image': f'data:image/png;base64,{img_base64}'})
-        except Exception as e:
-            logger.error(f"Error extracting pixmap: {e}")
-            raise
+        # Directly use our extract_pdf_region utility function which should now match the example
+        image_data = extract_pdf_region(filename, region)
+        return jsonify({'image': image_data})
     except Exception as e:
         logger.error(f"Error in get_pdf_region: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
+    
 
 @corrections_bp.route('/api/save', methods=['POST'])
 def save_file():
