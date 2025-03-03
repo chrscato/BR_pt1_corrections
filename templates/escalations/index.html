@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Escalations Dashboard{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='css/escalations.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left panel: File list -->
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Escalated Records</span>
+                <span id="fileCount" class="badge bg-danger rounded-pill">0</span>
+            </div>
+            <div class="card-body file-list p-0">
+                <div class="list-group" id="fileList">
+                    <!-- Files will be listed here -->
+                    <div class="list-group-item text-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span class="ms-2">Loading escalated records...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Middle panel: Record details and PDF viewer -->
+    <div class="col-md-5">
+        <div class="card mb-3">
+            <div class="card-header">Escalation Details</div>
+            <div class="card-body">
+                <div id="escalationInfo">
+                    <div class="alert alert-info">Select an escalated record to review</div>
+                </div>
+                <div id="recordDetails">
+                    <!-- Record details will be shown here -->
+                </div>
+                
+                <div class="resolution-form mt-3 d-none" id="resolutionForm">
+                    <h5 class="mb-3">Resolve Escalation</h5>
+                    <div class="mb-3">
+                        <label for="orderIdInput" class="form-label">Order ID</label>
+                        <input type="text" class="form-control" id="orderIdInput">
+                    </div>
+                    <div class="mb-3">
+                        <label for="filemakerInput" class="form-label">FileMaker Record Number</label>
+                        <input type="text" class="form-control" id="filemakerInput">
+                    </div>
+                    <div class="mb-3">
+                        <label for="resolutionNotes" class="form-label">Resolution Notes</label>
+                        <textarea class="form-control" id="resolutionNotes" rows="2" placeholder="Enter notes about how this escalation was resolved..."></textarea>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col">
+                            <button id="resolveButton" class="btn btn-success w-100">Resolve Escalation</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">PDF Viewer</div>
+            <div class="card-body">
+                <ul class="nav nav-tabs mb-3" id="pdfTabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#fullPdf">Full PDF</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#headerRegion">Header</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#serviceRegion">Service Lines</a>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="fullPdf">
+                        <iframe id="pdfFrame" class="pdf-viewer" src="about:blank"></iframe>
+                    </div>
+                    <div class="tab-pane fade" id="headerRegion">
+                        <img id="headerImage" class="region-image" src="" alt="Header region">
+                    </div>
+                    <div class="tab-pane fade" id="serviceRegion">
+                        <img id="serviceImage" class="region-image" src="" alt="Service lines region">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right panel: Database search and matches -->
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header">Search Database</div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col">
+                        <label for="firstNameSearch" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="firstNameSearch" placeholder="First name...">
+                    </div>
+                    <div class="col">
+                        <label for="lastNameSearch" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="lastNameSearch" placeholder="Last name...">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="dosSearch" class="form-label">Date of Service</label>
+                    <input type="text" class="form-control" id="dosSearch" placeholder="YYYY-MM-DD">
+                </div>
+                <div class="mb-3">
+                    <label for="monthsRange" class="form-label">Months Range (±)</label>
+                    <select class="form-select" id="monthsRange">
+                        <option value="1">1 month</option>
+                        <option value="2">2 months</option>
+                        <option value="3" selected>3 months</option>
+                        <option value="6">6 months</option>
+                        <option value="12">12 months</option>
+                    </select>
+                </div>
+                <button id="searchButton" class="btn btn-primary">Search</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Potential Matches</span>
+                <span id="matchCount" class="badge bg-secondary">0</span>
+            </div>
+            <div class="card-body p-2">
+                <div id="searchStatus"></div>
+                <div id="matchResults" class="results-area">
+                    <!-- Search results will be shown here -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header bg-danger text-white">Reject Escalation</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="rejectionReason" class="form-label">Rejection Reason</label>
+                    <textarea class="form-control" id="rejectionReason" rows="3" placeholder="Enter reason for rejecting this escalation..."></textarea>
+                </div>
+                <button id="rejectButton" class="btn btn-outline-danger w-100">Reject Escalation</button>
+                <div class="form-text mt-2">
+                    Use this option if the escalation cannot be resolved and needs to be sent back.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmationModalLabel">Confirm Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmationModalBody">
+                Are you sure you want to proceed with this action?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmActionButton">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/escalations/main.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,150 @@
+/**
+ * Specific styles for the Escalations Dashboard
+ */
+
+/* File list styling */
+.file-list {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.list-group-item.active {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+/* Add a subtle indicator for escalations */
+.list-group-item-escalated {
+    border-left: 4px solid #dc3545;
+}
+
+/* Escalation info panel */
+.escalation-info {
+    background-color: #f8d7da;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 4px solid #dc3545;
+}
+
+.escalation-info .escalation-date {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.escalation-info .escalation-notes {
+    margin-top: 10px;
+    font-style: italic;
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 3px solid #dc3545;
+}
+
+/* Record details section styling */
+#recordDetails {
+    max-height: 350px;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+/* Resolution form */
+.resolution-form {
+    background-color: #e8f4f8;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 20px;
+    border-left: 3px solid #0d6efd;
+}
+
+/* Patient info section styling */
+#patientInfoDisplay {
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    margin-top: 10px;
+    border-left: 3px solid #0d6efd;
+}
+
+#patientInfoDisplay p {
+    margin-bottom: 5px;
+}
+
+/* PDF viewer styling */
+.pdf-viewer {
+    width: 100%;
+    height: 400px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.region-image {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Search results styling */
+.results-area {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Highlight buttons based on action */
+#resolveButton {
+    position: relative;
+    overflow: hidden;
+}
+
+#resolveButton:after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 0.375rem;
+    z-index: -1;
+    background-color: rgba(25, 135, 84, 0.3);
+    animation: pulse-success 2s infinite;
+}
+
+@keyframes pulse-success {
+    0% {
+        opacity: 1;
+        transform: scale(0.95);
+    }
+    70% {
+        opacity: 0;
+        transform: scale(1.1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.1);
+    }
+}
+
+/* Dark mode adaptations */
+.dark-mode .escalation-info {
+    background-color: rgba(220, 53, 69, 0.2);
+    border-color: #dc3545;
+}
+
+.dark-mode .escalation-info .escalation-notes {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-color: #dc3545;
+}
+
+.dark-mode .resolution-form {
+    background-color: rgba(13, 110, 253, 0.1);
+    border-color: #0d6efd;
+}
+
+.dark-mode #patientInfoDisplay {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: #0d6efd;
+}

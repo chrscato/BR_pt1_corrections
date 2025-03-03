@@ -21,7 +21,7 @@
         
         <div class="row">
             <!-- Unmapped Records Review Card -->
-            <div class="col-md-6 mb-4">
+            <div class="col-md-4 mb-4">
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h2 class="h4 mb-0">Unmapped Records Review</h2>
@@ -47,7 +47,7 @@
             </div>
             
             <!-- OCR Corrections Card -->
-            <div class="col-md-6 mb-4">
+            <div class="col-md-4 mb-4">
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h2 class="h4 mb-0">OCR Corrections</h2>
@@ -71,6 +71,36 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Escalations Dashboard Card -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h2 class="h4 mb-0">Escalations Dashboard</h2>
+                        <span class="badge {% if escalations_count > 0 %}bg-danger{% else %}bg-secondary{% endif %} rounded-pill">{{ escalations_count }}</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            Review and resolve records that have been escalated for special handling.
+                        </p>
+                        <ul>
+                            <li>View escalation notes and details</li>
+                            <li>Review complex or problematic records</li>
+                            <li>Resolve escalations with Order IDs</li>
+                            <li>Reject escalations with explanations</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('escalations.index') }}" class="btn {% if escalations_count > 0 %}btn-danger{% else %}btn-primary{% endif %} w-100">
+                            {% if escalations_count > 0 %}
+                                Launch Escalations Dashboard ({{ escalations_count }})
+                            {% else %}
+                                Launch Escalations Dashboard
+                            {% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- Statistics and Quick Links -->
@@ -80,18 +110,25 @@
             </div>
             <div class="card-body">
                 <div class="row text-center">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="p-3">
                             <h3 class="h5">Unmapped Records</h3>
                             <p class="display-4">{{ unmapped_count }}</p>
                             <p class="text-muted">Records awaiting review</p>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="p-3">
                             <h3 class="h5">OCR Corrections</h3>
                             <p class="display-4">{{ corrections_count }}</p>
                             <p class="text-muted">Records needing correction</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3">
+                            <h3 class="h5">Escalations</h3>
+                            <p class="display-4 {% if escalations_count > 0 %}text-danger{% endif %}">{{ escalations_count }}</p>
+                            <p class="text-muted">Records needing resolution</p>
                         </div>
                     </div>
                 </div>

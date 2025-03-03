@@ -17,13 +17,23 @@ app.config.from_object('config')
 for folder in config.FOLDERS.values():
     folder.mkdir(parents=True, exist_ok=True)
 
+# Create escalations directory if it doesn't exist
+escalations_folder = config.BASE_PATH / r"scripts\VAILIDATION\data\extracts\escalations"
+escalations_folder.mkdir(parents=True, exist_ok=True)
+
+# Create rejected directory if it doesn't exist
+rejected_folder = config.BASE_PATH / r"scripts\VAILIDATION\data\extracts\rejected"
+rejected_folder.mkdir(parents=True, exist_ok=True)
+
 # Import blueprints
 from routes.unmapped import unmapped_bp
 from routes.corrections import corrections_bp
+from routes.escalations import escalations_bp
 
 # Register blueprints
 app.register_blueprint(unmapped_bp, url_prefix='/unmapped')
 app.register_blueprint(corrections_bp, url_prefix='/corrections')
+app.register_blueprint(escalations_bp, url_prefix='/escalations')
 
 
 
@@ -65,6 +75,18 @@ def debug_paths():
             if file_count > 0:
                 results[folder_name + "_files"] = [f.name for f in list(Path(folder_path).glob(file_pattern))[:5]]
     
+    # Add escalations folder info
+    escalations_folder = config.BASE_PATH / r"scripts\VAILIDATION\data\extracts\escalations"
+    results["folder_paths"]["ESCALATIONS_FOLDER"] = str(escalations_folder)
+    results["folder_paths"]["ESCALATIONS_FOLDER_exists"] = os.path.exists(escalations_folder)
+    
+    if os.path.exists(escalations_folder):
+        file_count = len(list(Path(escalations_folder).glob("*.json")))
+        results["file_counts"]["ESCALATIONS_FOLDER"] = file_count
+        
+        if file_count > 0:
+            results["ESCALATIONS_FOLDER_files"] = [f.name for f in list(Path(escalations_folder).glob("*.json"))[:5]]
+    
     return jsonify(results)
 
 
@@ -99,9 +121,14 @@ def home():
     unmapped_count = len(list(config.FOLDERS['UNMAPPED_FOLDER'].glob('*.json')))
     corrections_count = len(list(config.FOLDERS['FAILS_FOLDER'].glob('*.json')))
     
+    # Count escalations
+    escalations_folder = config.BASE_PATH / r"scripts\VAILIDATION\data\extracts\escalations"
+    escalations_count = len(list(escalations_folder.glob('*.json'))) if escalations_folder.exists() else 0
+    
     return render_template('home.html', 
                           unmapped_count=unmapped_count,
-                          corrections_count=corrections_count)
+                          corrections_count=corrections_count,
+                          escalations_count=escalations_count)
 
 def open_browser():
     """Open the browser after a short delay."""
