@@ -80,7 +80,7 @@
                 </ul>
                 <div class="tab-content">
                     <div class="tab-pane fade show active" id="fullPdf">
-                        <iframe id="pdfFrame" class="pdf-viewer" src="about:blank"></iframe>
+                        <iframe id="pdfFrame" class="pdf_viewer" src="about:blank"></iframe>
                     </div>
                     <div class="tab-pane fade" id="headerRegion">
                         <img id="headerImage" class="region-image" src="" alt="Header region">
@@ -177,8 +177,8 @@
 
 {% block scripts %}
 <!-- Include modular JavaScript files in the correct order -->
-<script src="{{ url_for('static', filename='js/escalations/pdf-viewer.js') }}"></script>
-<script src="{{ url_for('static', filename='js/escalations/file-manager.js') }}"></script>
+<script src="{{ url_for('static', filename='js/escalations/pdf_viewer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/escalations/file_manager.js') }}"></script>
 <script src="{{ url_for('static', filename='js/escalations/search.js') }}"></script>
 <script src="{{ url_for('static', filename='js/escalations/editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/escalations/actions.js') }}"></script>
