@@ -124,16 +124,16 @@ function displaySearchResults(results) {
             <div class="card mb-2">
                 <div class="card-header p-2">
                     <div class="d-flex justify-content-between align-items-center">
-                        <strong>${result.Patient_Last_Name}, ${result.Patient_First_Name}</strong>
+                        <strong>${result.Patient_Last_Name || ''}, ${result.Patient_First_Name || ''}</strong>
                         <button class="btn btn-sm btn-success" 
-                                onclick="applyMatch('${result.Order_ID}', '${result.FileMaker_Record_Number}')">
+                                onclick="applyMatch('${result.Order_ID}', '${result.FileMaker_Record_Number || ''}')">
                             Apply
                         </button>
                     </div>
                 </div>
                 <div class="card-body p-2">
                     <p class="mb-1"><small>Order ID: ${result.Order_ID}</small></p>
-                    <p class="mb-1"><small>FileMaker: ${result.FileMaker_Record_Number}</small></p>
+                    <p class="mb-1"><small>FileMaker: ${result.FileMaker_Record_Number || 'N/A'}</small></p>
                     <p class="mb-1"><small>DOS: ${result.DOS_List || 'N/A'}</small></p>
                     <p class="mb-1"><small>CPT: ${result.CPT_List || 'N/A'}</small></p>
                     <div class="d-flex justify-content-between">
@@ -164,4 +164,7 @@ function applyMatch(orderId, fileMakerRecord) {
     
     // Scroll to the resolution form
     document.getElementById('resolutionForm').scrollIntoView({ behavior: 'smooth' });
+    
+    // Show success message
+    showAlert('Match applied successfully!', 'success');
 }

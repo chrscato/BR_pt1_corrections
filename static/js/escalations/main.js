@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set up event listeners for buttons and controls
     setupEventListeners();
     
+    // Create modal instances on page load
+    window.confirmModalInstance = new bootstrap.Modal(document.getElementById('confirmationModal'));
+    
     // Load the list of escalated files
     loadFiles();
     
@@ -59,29 +62,6 @@ function setupEventListeners() {
             }
         });
     }
-}
-
-/**
- * Clear the current file and reset UI
- */
-function clearCurrentFile() {
-    currentFileName = null;
-    currentData = null;
-    
-    // Reset UI
-    document.getElementById('escalationInfo').innerHTML = '<div class="alert alert-info">Select an escalated record to review</div>';
-    document.getElementById('recordDetails').innerHTML = '';
-    document.getElementById('pdfFrame').src = 'about:blank';
-    document.getElementById('headerImage').src = '';
-    document.getElementById('serviceImage').src = '';
-    document.getElementById('resolutionForm').classList.add('d-none');
-    document.getElementById('orderIdInput').value = '';
-    document.getElementById('filemakerInput').value = '';
-    document.getElementById('resolutionNotes').value = '';
-    document.getElementById('rejectionReason').value = '';
-    document.getElementById('searchStatus').innerHTML = '';
-    document.getElementById('matchResults').innerHTML = '';
-    document.getElementById('matchCount').textContent = '0';
 }
 
 /**

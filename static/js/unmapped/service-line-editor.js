@@ -2,9 +2,6 @@
  * Service line editing functionality for the Unmapped Records Review tool
  */
 
-// Track if the service lines have been modified
-let serviceLinesModified = false;
-
 /**
  * Edit service lines in the unmapped records
  */
@@ -14,10 +11,11 @@ function editServiceLines() {
         return;
     }
 
-    const serviceLines = currentData.service_lines || [];
+    // Make a copy of service lines to ensure we're not modifying a const array
+    const serviceLines = Array.isArray(currentData.service_lines) ? [...currentData.service_lines] : [];
     
     // Create an editable service lines table
-    const html = `
+    let html = `
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>Edit Service Lines</span>
@@ -36,6 +34,7 @@ function editServiceLines() {
                         <tr>
                             <th>DOS</th>
                             <th>CPT</th>
+                            <th>Modifiers</th>
                             <th>Amount</th>
                             <th>Actions</th>
                         </tr>
@@ -45,21 +44,40 @@ function editServiceLines() {
     
     if (serviceLines.length > 0) {
         serviceLines.forEach((line, index) => {
+            // Create a copy of each line to avoid modifying the original
+            const safeItem = {...line};
+            
+            // Format modifiers for display - convert array to comma-separated string
+            let modifiersValue = '';
+            if (safeItem.modifiers) {
+                if (Array.isArray(safeItem.modifiers)) {
+                    modifiersValue = safeItem.modifiers.join(', ');
+                } else if (typeof safeItem.modifiers === 'string') {
+                    modifiersValue = safeItem.modifiers;
+                }
+            }
+            
             html += `
                 <tr id="service-line-${index}">
                     <td>
                         <input type="text" class="form-control form-control-sm" 
-                            value="${line.date_of_service || ''}" 
+                            value="${safeItem.date_of_service || ''}" 
                             onchange="updateServiceLine(${index}, 'date_of_service', this.value)">
                     </td>
                     <td>
                         <input type="text" class="form-control form-control-sm" 
-                            value="${line.cpt_code || ''}" 
+                            value="${safeItem.cpt_code || ''}" 
                             onchange="updateServiceLine(${index}, 'cpt_code', this.value)">
                     </td>
                     <td>
                         <input type="text" class="form-control form-control-sm" 
-                            value="${line.charge_amount || ''}" 
+                            value="${modifiersValue}" 
+                            placeholder="e.g. 25, 59, RT"
+                            onchange="updateServiceLineModifiers(${index}, this.value)">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                            value="${safeItem.charge_amount || ''}" 
                             onchange="updateServiceLine(${index}, 'charge_amount', this.value)">
                     </td>
                     <td>
@@ -73,7 +91,7 @@ function editServiceLines() {
     } else {
         html += `
             <tr>
-                <td colspan="4" class="text-center">
+                <td colspan="5" class="text-center">
                     No service lines found. Click "Add Line" to add one.
                 </td>
             </tr>
@@ -88,7 +106,23 @@ function editServiceLines() {
     `;
     
     // Update the record details display
-    document.getElementById('recordDetails').innerHTML = html;
+    const recordDetails = document.getElementById('recordDetails');
+    if (!recordDetails) {
+        console.error("Record details element not found");
+        return;
+    }
+    
+    const recordContent = recordDetails.innerHTML;
+    
+    // Find the service lines card (second card) and replace it
+    const firstCardEnd = recordContent.indexOf('</div>', recordContent.indexOf('<div class="card mb-3"')) + 6;
+    if (firstCardEnd > 6) {
+        recordDetails.innerHTML = recordContent.substring(0, firstCardEnd) + html;
+    } else {
+        console.error("Could not find first card end. Using fallback approach");
+        // Fallback - just append the service line editor
+        recordDetails.innerHTML += html;
+    }
 }
 
 /**
@@ -105,11 +139,12 @@ function addServiceLine() {
     currentData.service_lines.push({
         date_of_service: '',
         cpt_code: '',
+        modifiers: [],
         charge_amount: ''
     });
     
     // Mark as modified
-    serviceLinesModified = true;
+    window.serviceLinesModified = true;
     
     // Update the Service Lines UI
     editServiceLines();
@@ -131,11 +166,15 @@ function removeServiceLine(index) {
     
     // Confirm removal
     if (confirm('Are you sure you want to remove this service line?')) {
+        // Make a copy of the service lines array
+        const newServiceLines = [...currentData.service_lines];
         // Remove the service line
-        currentData.service_lines.splice(index, 1);
+        newServiceLines.splice(index, 1);
+        // Update the data
+        currentData.service_lines = newServiceLines;
         
         // Mark as modified
-        serviceLinesModified = true;
+        window.serviceLinesModified = true;
         
         // Update the Service Lines UI
         editServiceLines();
@@ -156,13 +195,59 @@ function removeServiceLine(index) {
  * @param {*} value - New value for the field
  */
 function updateServiceLine(index, field, value) {
-    if (!currentData || !currentData.service_lines || !currentData.service_lines[index]) return;
+    if (!currentData || !currentData.service_lines || index >= currentData.service_lines.length) return;
     
-    // Update the field
-    currentData.service_lines[index][field] = value;
+    // Create a copy of the service line
+    const updatedLine = {...currentData.service_lines[index]};
+    // Update the field in the copy
+    updatedLine[field] = value;
+    
+    // Create a copy of the service lines array
+    const newServiceLines = [...currentData.service_lines];
+    // Update the service line in the array
+    newServiceLines[index] = updatedLine;
+    // Update the data
+    currentData.service_lines = newServiceLines;
     
     // Mark as modified
-    serviceLinesModified = true;
+    window.serviceLinesModified = true;
+    
+    // Mark save button as modified
+    const saveButton = document.getElementById('saveButton');
+    if (saveButton) {
+        saveButton.classList.add('data-modified');
+        saveButton.textContent = `Save Changes (Modified)`;
+    }
+}
+
+/**
+ * Update modifiers for a service line
+ * @param {number} index - Index of the service line
+ * @param {string} modifiersStr - Comma-separated modifiers
+ */
+function updateServiceLineModifiers(index, modifiersStr) {
+    if (!currentData || !currentData.service_lines || index >= currentData.service_lines.length) return;
+    
+    // Convert comma-separated string to array, removing empty items and trimming whitespace
+    const modifiersArray = modifiersStr
+        .split(',')
+        .map(mod => mod.trim())
+        .filter(mod => mod.length > 0);
+    
+    // Create a copy of the service line
+    const updatedLine = {...currentData.service_lines[index]};
+    // Update the modifiers in the copy
+    updatedLine.modifiers = modifiersArray;
+    
+    // Create a copy of the service lines array
+    const newServiceLines = [...currentData.service_lines];
+    // Update the service line in the array
+    newServiceLines[index] = updatedLine;
+    // Update the data
+    currentData.service_lines = newServiceLines;
+    
+    // Mark as modified
+    window.serviceLinesModified = true;
     
     // Mark save button as modified
     const saveButton = document.getElementById('saveButton');
@@ -176,87 +261,6 @@ function updateServiceLine(index, field, value) {
  * Save service lines changes and return to normal view
  */
 function saveServiceLines() {
-    // Display the normal record details
-    displayRecordDetails();
-}
-
-/**
- * Edit patient information
- */
-function editPatientInfo() {
-    if (!currentData) {
-        showAlert('No record loaded', 'error');
-        return;
-    }
-
-    const patientInfo = currentData.patient_info || {};
-    
-    // Create an editable patient info form
-    const html = `
-        <div class="card mb-3" id="patientInfoEdit">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Edit Patient Information</span>
-                <button class="btn btn-sm btn-primary" onclick="savePatientInfo()">
-                    <i class="bi bi-check-circle"></i> Done
-                </button>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">Patient Name</label>
-                    <input type="text" class="form-control" id="edit-patient-name" 
-                        value="${patientInfo.patient_name || ''}" 
-                        onchange="updatePatientInfo('patient_name', this.value)">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Date of Birth</label>
-                    <input type="text" class="form-control" id="edit-patient-dob" 
-                        value="${patientInfo.patient_dob || ''}" 
-                        onchange="updatePatientInfo('patient_dob', this.value)">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Zip Code</label>
-                    <input type="text" class="form-control" id="edit-patient-zip" 
-                        value="${patientInfo.patient_zip || ''}" 
-                        onchange="updatePatientInfo('patient_zip', this.value)">
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Replace the patient info section in the record details
-    const recordDetails = document.getElementById('recordDetails');
-    const recordContent = recordDetails.innerHTML;
-    recordDetails.innerHTML = html + recordContent.substring(recordContent.indexOf('<div class="card">'));
-}
-
-/**
- * Update a patient info field
- * @param {string} field - Field name to update
- * @param {string} value - New value for the field
- */
-function updatePatientInfo(field, value) {
-    if (!currentData) return;
-    
-    // Ensure patient_info exists
-    if (!currentData.patient_info) {
-        currentData.patient_info = {};
-    }
-    
-    // Update the field
-    currentData.patient_info[field] = value;
-    
-    // Mark save button as modified
-    const saveButton = document.getElementById('saveButton');
-    if (saveButton) {
-        saveButton.classList.add('data-modified');
-        saveButton.textContent = `Save Changes (Modified)`;
-    }
-}
-
-/**
- * Save patient info changes and return to normal view
- */
-function savePatientInfo() {
     // Display the normal record details
     displayRecordDetails();
 }

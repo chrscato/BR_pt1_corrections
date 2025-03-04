@@ -15,7 +15,6 @@ function showConfirmation(action) {
     
     currentAction = action;
     
-    const modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
     const modalTitle = document.getElementById('confirmationModalLabel');
     const modalBody = document.getElementById('confirmationModalBody');
     const confirmButton = document.getElementById('confirmActionButton');
@@ -56,7 +55,14 @@ function showConfirmation(action) {
         confirmButton.className = 'btn btn-danger';
     }
     
-    modal.show();
+    // Show the modal
+    if (window.confirmModalInstance) {
+        window.confirmModalInstance.show();
+    } else {
+        const modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+        window.confirmModalInstance = modal;
+        modal.show();
+    }
 }
 
 /**
@@ -80,9 +86,8 @@ async function resolveEscalation() {
         console.log(`Resolving escalation for ${currentFileName} with Order ID: ${orderId}`);
         
         // Close the modal if it's open
-        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
-        if (modal) {
-            modal.hide();
+        if (window.confirmModalInstance) {
+            window.confirmModalInstance.hide();
         }
         
         // Show loading state
@@ -156,9 +161,8 @@ async function rejectEscalation() {
         console.log(`Rejecting escalation for ${currentFileName}`);
         
         // Close the modal if it's open
-        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmationModal'));
-        if (modal) {
-            modal.hide();
+        if (window.confirmModalInstance) {
+            window.confirmModalInstance.hide();
         }
         
         // Show loading state

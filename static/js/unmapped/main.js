@@ -6,21 +6,58 @@
 // Global variables
 let currentFileName = null;
 let currentData = null;
-let patientInfoModified = false;
-let serviceLinesModified = false;
+window.patientInfoModified = false;
+window.serviceLinesModified = false;
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("Initializing Unmapped Records Tool");
     loadFiles();
     setupEventListeners();
     debugPaths();
 });
 
 function setupEventListeners() {
-    document.getElementById('searchButton')?.addEventListener('click', performSearch);
-    document.getElementById('saveButton')?.addEventListener('click', saveChanges);
-    document.getElementById('notFoundButton')?.addEventListener('click', handleNotFound);
-    document.getElementById('escalateButton')?.addEventListener('click', showEscalateModal);
-    document.getElementById('escalateSubmitButton')?.addEventListener('click', submitEscalation);
+    console.log("Setting up event listeners");
+    const searchButton = document.getElementById('searchButton');
+    if (searchButton) {
+        searchButton.addEventListener('click', function() {
+            if (typeof window.performSearch === 'function') {
+                window.performSearch();
+            } else {
+                console.error("performSearch function is not defined in the global scope");
+            }
+        });
+    } else {
+        console.warn("Search button not found in the DOM");
+    }
+    
+    const saveButton = document.getElementById('saveButton');
+    if (saveButton) {
+        saveButton.addEventListener('click', saveChanges);
+    } else {
+        console.warn("Save button not found in the DOM");
+    }
+    
+    const notFoundButton = document.getElementById('notFoundButton');
+    if (notFoundButton) {
+        notFoundButton.addEventListener('click', handleNotFound);
+    } else {
+        console.warn("Not Found button not found in the DOM");
+    }
+    
+    const escalateButton = document.getElementById('escalateButton');
+    if (escalateButton) {
+        escalateButton.addEventListener('click', showEscalateModal);
+    } else {
+        console.warn("Escalate button not found in the DOM");
+    }
+    
+    const escalateSubmitButton = document.getElementById('escalateSubmitButton');
+    if (escalateSubmitButton) {
+        escalateSubmitButton.addEventListener('click', submitEscalation);
+    } else {
+        console.warn("Escalate submit button not found in the DOM");
+    }
 }
 
 /**
@@ -52,11 +89,11 @@ async function saveChanges() {
         }
         
         // Check if patient info or service lines were modified
-        if (patientInfoModified) {
+        if (window.patientInfoModified) {
             changes.push(`Patient information was modified`);
         }
         
-        if (serviceLinesModified) {
+        if (window.serviceLinesModified) {
             changes.push(`Service lines were modified`);
         }
         
@@ -86,8 +123,8 @@ async function saveChanges() {
         }
         
         // Reset modification flags
-        patientInfoModified = false;
-        serviceLinesModified = false;
+        window.patientInfoModified = false;
+        window.serviceLinesModified = false;
         
         // Show success message using the new showAlert function
         showAlert('Changes saved successfully!', 'success');
@@ -192,12 +229,16 @@ async function handleNotFound() {
 
 async function loadFiles() {
     try {
+        console.log("Fetching unmapped files list");
         const response = await fetch('/unmapped/api/files');
         const data = await response.json();
         const fileList = document.getElementById('fileList');
         fileList.innerHTML = '';
 
-        if (data.files?.length > 0) {
+        console.log("Files response:", data);
+
+        if (data.files && data.files.length > 0) {
+            console.log(`Found ${data.files.length} unmapped files`);
             data.files.forEach(file => {
                 const listItem = document.createElement('a');
                 listItem.className = 'list-group-item list-group-item-action';
@@ -210,11 +251,31 @@ async function loadFiles() {
                 fileList.appendChild(listItem);
             });
         } else {
+            console.log("No unmapped files found");
             fileList.innerHTML = '<div class="list-group-item">No unmapped files found</div>';
+            
+            // Add a helpful message about checking file paths
+            const pathInfoItem = document.createElement('div');
+            pathInfoItem.className = 'list-group-item';
+            pathInfoItem.innerHTML = `
+                <div class="alert alert-info mb-0">
+                    <p class="mb-2"><strong>No files found</strong></p>
+                    <p>Check that your configuration has the correct paths:</p>
+                    <code>config.FOLDERS['UNMAPPED_FOLDER']</code>
+                    <p class="mt-2">See debug path information in browser console.</p>
+                </div>
+            `;
+            fileList.appendChild(pathInfoItem);
         }
     } catch (error) {
         console.error('Error loading files:', error);
-        document.getElementById('fileList').innerHTML = '<div class="list-group-item text-danger">Error loading files</div>';
+        document.getElementById('fileList').innerHTML = `
+            <div class="list-group-item text-danger">Error loading files: ${error.message}</div>
+            <div class="list-group-item">
+                <small>Path: /unmapped/api/files</small><br>
+                <small>Check the server logs for more information.</small>
+            </div>
+        `;
     }
 }
 
@@ -227,10 +288,27 @@ async function loadFile(filename) {
         if (!response.ok) throw new Error(result.error || 'Failed to load file');
 
         currentFileName = filename;
-        currentData = result.data;  // ✅ Ensure currentData is assigned
+        currentData = result.data;
 
-        displayRecordDetails();  // ✅ Call the function to populate UI
-        loadPDF(filename);  // ✅ Ensure PDF loads too
+        // Update selected file in the list
+        const fileItems = document.querySelectorAll('#fileList a');
+        fileItems.forEach(item => {
+            if (item.textContent === filename) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+
+        displayRecordDetails();
+        loadPDF(filename);
+        
+        // Pre-populate search fields with patient info from the file
+        if (typeof window.prepopulateSearch === 'function') {
+            window.prepopulateSearch(filename);
+        } else {
+            console.error("prepopulateSearch function is not defined in the global scope");
+        }
 
         document.getElementById('saveButton').disabled = false;
         document.getElementById('notFoundButton').disabled = false;
@@ -241,6 +319,7 @@ async function loadFile(filename) {
         document.getElementById('recordDetails').innerHTML = `<div class="alert alert-danger">Error loading file: ${error.message}</div>`;
     }
 }
+
 
 /**
  * Display the record details in the UI
@@ -259,9 +338,9 @@ function displayRecordDetails() {
                 <button class="btn btn-sm btn-outline-primary" onclick="editPatientInfo()">Edit</button>
             </div>
             <div class="card-body">
-                <p><strong>Name:</strong> ${patientInfo.patient_name || 'N/A'}</p>
-                <p><strong>DOB:</strong> ${patientInfo.patient_dob || 'N/A'}</p>
-                <p><strong>Zip:</strong> ${patientInfo.patient_zip || 'N/A'}</p>
+                <p><strong>Name:</strong> ${patientInfo.patient_name || ''}</p>
+                <p><strong>DOB:</strong> ${patientInfo.patient_dob || ''}</p>
+                <p><strong>Zip:</strong> ${patientInfo.patient_zip || ''}</p>
             </div>
         </div>
     `;
@@ -279,6 +358,7 @@ function displayRecordDetails() {
                         <tr>
                             <th>DOS</th>
                             <th>CPT</th>
+                            <th>Modifiers</th>
                             <th>Amount</th>
                         </tr>
                     </thead>
@@ -287,16 +367,27 @@ function displayRecordDetails() {
     
     if (serviceLines.length > 0) {
         serviceLines.forEach(line => {
+            // Format modifiers for display
+            let modifiersDisplay = '';
+            if (line.modifiers) {
+                if (Array.isArray(line.modifiers) && line.modifiers.length > 0) {
+                    modifiersDisplay = line.modifiers.join(', ');
+                } else if (typeof line.modifiers === 'string' && line.modifiers.length > 0) {
+                    modifiersDisplay = line.modifiers;
+                }
+            }
+            
             html += `
                 <tr>
-                    <td>${line.date_of_service || 'N/A'}</td>
-                    <td>${line.cpt_code || 'N/A'}</td>
-                    <td>${line.charge_amount || 'N/A'}</td>
+                    <td>${line.date_of_service || ''}</td>
+                    <td>${line.cpt_code || ''}</td>
+                    <td>${modifiersDisplay}</td>
+                    <td>${line.charge_amount || ''}</td>
                 </tr>
             `;
         });
     } else {
-        html += `<tr><td colspan="3" class="text-center">No service lines found</td></tr>`;
+        html += `<tr><td colspan="4" class="text-center">No service lines found</td></tr>`;
     }
     
     html += `
@@ -315,7 +406,7 @@ function displayRecordDetails() {
     // Reset modification state for save button
     const saveButton = document.getElementById('saveButton');
     if (saveButton) {
-        if (patientInfoModified || serviceLinesModified) {
+        if (window.patientInfoModified || window.serviceLinesModified) {
             saveButton.classList.add('data-modified');
             saveButton.textContent = `Save Changes (Modified)`;
         } else {
@@ -325,6 +416,99 @@ function displayRecordDetails() {
     }
 }
 
+/**
+ * Show the escalation modal
+ */
+function showEscalateModal() {
+    if (!currentFileName || !currentData) {
+        showAlert('No file loaded', 'error');
+        return;
+    }
+    
+    // Clear previous notes
+    document.getElementById('escalationNote').value = '';
+    
+    // Show the modal
+    const escalateModal = new bootstrap.Modal(document.getElementById('escalateModal'));
+    escalateModal.show();
+}
+
+/**
+ * Submit an escalation
+ */
+async function submitEscalation() {
+    try {
+        if (!currentFileName || !currentData) {
+            throw new Error('No file loaded');
+        }
+        
+        // Get the escalation notes
+        const notes = document.getElementById('escalationNote').value.trim();
+        if (!notes) {
+            throw new Error('Please provide notes for the escalation');
+        }
+        
+        // Show processing state
+        const escalateSubmitButton = document.getElementById('escalateSubmitButton');
+        escalateSubmitButton.disabled = true;
+        escalateSubmitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+        
+        // Send the escalation request
+        const response = await fetch('/unmapped/api/escalate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                filename: currentFileName,
+                content: currentData,
+                notes: notes
+            }),
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Escalation failed');
+        }
+        
+        // Hide the modal
+        const escalateModal = bootstrap.Modal.getInstance(document.getElementById('escalateModal'));
+        if (escalateModal) {
+            escalateModal.hide();
+        }
+        
+        // Show success message
+        showAlert('File escalated successfully', 'success');
+        
+        // Reload the file list
+        loadFiles();
+        
+        // Clear the current file
+        currentFileName = null;
+        currentData = null;
+        
+        // Reset the UI
+        document.getElementById('recordDetails').innerHTML = '<div class="alert alert-info">Select a file to review</div>';
+        document.getElementById('pdfFrame').src = 'about:blank';
+        document.getElementById('headerImage').src = '';
+        document.getElementById('serviceImage').src = '';
+        document.getElementById('orderIdInput').value = '';
+        document.getElementById('filemakerInput').value = '';
+        document.getElementById('saveButton').disabled = true;
+        document.getElementById('notFoundButton').disabled = true;
+        document.getElementById('escalateButton').disabled = true;
+        
+    } catch (error) {
+        console.error('Escalation error:', error);
+        showAlert(`Error escalating file: ${error.message}`, 'error');
+        
+        // Reset button state
+        const escalateSubmitButton = document.getElementById('escalateSubmitButton');
+        escalateSubmitButton.disabled = false;
+        escalateSubmitButton.textContent = 'Submit Escalation';
+    }
+}
 
 /**
  * Show an alert message that automatically disappears
@@ -358,5 +542,39 @@ function showAlert(message, type = 'success', duration = 3000) {
     }, duration);
 }
 
-// Make sure showAlert is available globally
+/**
+ * Debug paths to help troubleshoot
+ */
+async function debugPaths() {
+    try {
+        console.log('Fetching debug paths...');
+        const response = await fetch('/debug-paths');
+        
+        if (!response.ok) {
+            console.error(`Debug paths failed: ${response.status} ${response.statusText}`);
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('Debug paths data:', data);
+        
+        // Specifically log unmapped folder information
+        if (data.folder_paths && data.folder_paths.UNMAPPED_FOLDER) {
+            console.log('Unmapped folder path:', data.folder_paths.UNMAPPED_FOLDER);
+            console.log('Unmapped folder exists:', data.folder_paths.UNMAPPED_FOLDER_exists);
+            
+            if (data.file_counts && data.file_counts.UNMAPPED_FOLDER !== undefined) {
+                console.log('Unmapped file count:', data.file_counts.UNMAPPED_FOLDER);
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching debug paths:', error);
+    }
+}
+
+// Make sure functions are globally available
 window.showAlert = showAlert;
+window.showEscalateModal = showEscalateModal;
+window.submitEscalation = submitEscalation;
+window.displayRecordDetails = displayRecordDetails;
+window.loadPDF = loadPDF || function() { console.error("loadPDF function is not defined"); };

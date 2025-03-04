@@ -20,8 +20,18 @@ async function loadPDFRegion(filename, region, imgId) {
             if (imgElement) {
                 imgElement.src = data.image;
             }
+        } else if (data.error) {
+            console.error(`Error loading PDF region ${region}:`, data.error);
+            const imgElement = document.getElementById(imgId);
+            if (imgElement) {
+                imgElement.src = '/static/img/error.png';
+            }
         }
     } catch (error) {
         console.error(`Error loading ${region} PDF region:`, error);
+        const imgElement = document.getElementById(imgId);
+        if (imgElement) {
+            imgElement.src = '/static/img/error.png';
+        }
     }
 }

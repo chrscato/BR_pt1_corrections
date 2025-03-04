@@ -2,9 +2,6 @@
  * Patient information editing functionality for the Unmapped Records Review tool
  */
 
-// Track if the patient info has been modified
-let patientInfoModified = false;
-
 /**
  * Edit patient information
  */
@@ -87,7 +84,7 @@ function updatePatientInfo(field, value) {
     currentData.patient_info[field] = value;
     
     // Mark as modified
-    patientInfoModified = true;
+    window.patientInfoModified = true;
     
     // Mark save button as modified
     const saveButton = document.getElementById('saveButton');
