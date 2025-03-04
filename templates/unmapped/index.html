@@ -159,8 +159,10 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/unmapped/pdf-loader.js') }}"></script>
+<script src="{{ url_for('static', filename='js/unmapped/service-line-editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/unmapped/main.js') }}"></script>
 <script src="{{ url_for('static', filename='js/unmapped/patient-editor.js') }}"></script>
-<script src="{{ url_for('static', filename='js/unmapped/service-line-editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/unmapped/search.js') }}"></script>
 {% endblock %}
+

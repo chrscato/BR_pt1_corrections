@@ -173,9 +173,14 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
+<!-- Include modular JavaScript files in the correct order -->
+<script src="{{ url_for('static', filename='js/escalations/pdf-viewer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/escalations/file-manager.js') }}"></script>
+<script src="{{ url_for('static', filename='js/escalations/search.js') }}"></script>
+<script src="{{ url_for('static', filename='js/escalations/editor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/escalations/actions.js') }}"></script>
 <script src="{{ url_for('static', filename='js/escalations/main.js') }}"></script>
 {% endblock %}
