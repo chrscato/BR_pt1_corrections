@@ -87,3 +87,32 @@ def get_pdf(filename):
     except Exception as e:
         logger.error(f"Error serving PDF {filename}: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@provider_corrections_bp.route('/api/provider/update', methods=['POST'])
+def update_provider():
+    """
+    API endpoint to update provider details in the database.
+    """
+    try:
+        data = request.json  # Get the JSON request body
+        primary_key = data.get("primary_key")
+        updates = data.get("updates", {})
+
+        if not primary_key:
+            return jsonify({'error': 'Primary key is required'}), 400
+
+        if not updates:
+            return jsonify({'error': 'No updates provided'}), 400
+
+        # Initialize the ProviderUpdater and attempt the update
+        updater = ProviderUpdater()
+        update_success = updater.update_provider(primary_key, updates)
+
+        if update_success:
+            return jsonify({'success': True, 'message': 'Provider updated successfully'})
+        else:
+            return jsonify({'error': 'Failed to update provider'}), 500
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
