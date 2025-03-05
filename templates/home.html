@@ -21,10 +21,10 @@
         
         <div class="row">
             <!-- Unmapped Records Review Card -->
-            <div class="col-md-4 mb-4">
+            <div class="col-md-4 col-lg-3 mb-4">
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h2 class="h4 mb-0">Unmapped Records Review</h2>
+                        <h2 class="h4 mb-0">Unmapped Records</h2>
                         <span class="badge bg-primary rounded-pill">{{ unmapped_count }}</span>
                     </div>
                     <div class="card-body">
@@ -32,22 +32,21 @@
                             Review and map patient records that could not be automatically matched to FileMaker records.
                         </p>
                         <ul>
-                            <li>Match patient records to database entries</li>
+                            <li>Match patient records to database</li>
                             <li>Update Order IDs and FileMaker numbers</li>
-                            <li>Edit patient information and service lines</li>
-                            <li>View associated PDF bills</li>
+                            <li>Edit patient information</li>
                         </ul>
                     </div>
                     <div class="card-footer">
                         <a href="{{ url_for('unmapped.index') }}" class="btn btn-primary w-100">
-                            Launch Unmapped Records Review
+                            Launch Unmapped Records
                         </a>
                     </div>
                 </div>
             </div>
             
             <!-- OCR Corrections Card -->
-            <div class="col-md-4 mb-4">
+            <div class="col-md-4 col-lg-3 mb-4">
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h2 class="h4 mb-0">OCR Corrections</h2>
@@ -59,9 +58,8 @@
                         </p>
                         <ul>
                             <li>Verify and correct patient information</li>
-                            <li>Fix service line details (CPT codes, charges, etc.)</li>
+                            <li>Fix service line details</li>
                             <li>Add missing information</li>
-                            <li>View original PDF documents</li>
                         </ul>
                     </div>
                     <div class="card-footer">
@@ -72,11 +70,63 @@
                 </div>
             </div>
             
-            <!-- Escalations Dashboard Card -->
-            <div class="col-md-4 mb-4">
+            <!-- Rate Corrections Card -->
+            <div class="col-md-4 col-lg-3 mb-4">
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h2 class="h4 mb-0">Escalations Dashboard</h2>
+                        <h2 class="h4 mb-0">Rate Corrections</h2>
+                        <span class="badge bg-warning rounded-pill">New</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            Update provider rates to fix rate validation failures.
+                        </p>
+                        <ul>
+                            <li>View providers with rate failures</li>
+                            <li>Set category-based pricing</li>
+                            <li>Update PPO rate table</li>
+                            <li>Resolve rate failures</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('rate_corrections.index') }}" class="btn btn-warning w-100">
+                            Launch Rate Corrections
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Provider Corrections Card -->
+            <div class="col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h2 class="h4 mb-0">Provider Data</h2>
+                        <span class="badge bg-warning rounded-pill">New</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            Fix missing or incomplete provider information.
+                        </p>
+                        <ul>
+                            <li>Update provider billing information</li>
+                            <li>Add missing TIN and NPI</li>
+                            <li>Set provider network status</li>
+                            <li>Fix provider validation failures</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <a href="{{ url_for('provider_corrections.index') }}" class="btn btn-warning w-100">
+                            Launch Provider Corrections
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Escalations Dashboard Card -->
+            <div class="col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h2 class="h4 mb-0">Escalations</h2>
                         <span class="badge {% if escalations_count > 0 %}bg-danger{% else %}bg-secondary{% endif %} rounded-pill">{{ escalations_count }}</span>
                     </div>
                     <div class="card-body">
@@ -85,17 +135,16 @@
                         </p>
                         <ul>
                             <li>View escalation notes and details</li>
-                            <li>Review complex or problematic records</li>
-                            <li>Resolve escalations with Order IDs</li>
-                            <li>Reject escalations with explanations</li>
+                            <li>Review complex records</li>
+                            <li>Resolve escalations</li>
                         </ul>
                     </div>
                     <div class="card-footer">
                         <a href="{{ url_for('escalations.index') }}" class="btn {% if escalations_count > 0 %}btn-danger{% else %}btn-primary{% endif %} w-100">
                             {% if escalations_count > 0 %}
-                                Launch Escalations Dashboard ({{ escalations_count }})
+                                Launch Escalations ({{ escalations_count }})
                             {% else %}
-                                Launch Escalations Dashboard
+                                Launch Escalations
                             {% endif %}
                         </a>
                     </div>
@@ -110,21 +159,35 @@
             </div>
             <div class="card-body">
                 <div class="row text-center">
-                    <div class="col-md-4">
+                    <div class="col-md col-lg">
                         <div class="p-3">
                             <h3 class="h5">Unmapped Records</h3>
                             <p class="display-4">{{ unmapped_count }}</p>
                             <p class="text-muted">Records awaiting review</p>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md col-lg">
                         <div class="p-3">
                             <h3 class="h5">OCR Corrections</h3>
                             <p class="display-4">{{ corrections_count }}</p>
                             <p class="text-muted">Records needing correction</p>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md col-lg">
+                        <div class="p-3">
+                            <h3 class="h5">Rate Failures</h3>
+                            <p class="display-4 text-warning">New</p>
+                            <p class="text-muted">Rate validation failures</p>
+                        </div>
+                    </div>
+                    <div class="col-md col-lg">
+                        <div class="p-3">
+                            <h3 class="h5">Provider Data</h3>
+                            <p class="display-4 text-warning">New</p>
+                            <p class="text-muted">Providers with missing data</p>
+                        </div>
+                    </div>
+                    <div class="col-md col-lg">
                         <div class="p-3">
                             <h3 class="h5">Escalations</h3>
                             <p class="display-4 {% if escalations_count > 0 %}text-danger{% endif %}">{{ escalations_count }}</p>

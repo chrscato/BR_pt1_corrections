@@ -12,6 +12,12 @@ AUTO_OPEN_BROWSER = True
 # File paths - Update these paths as needed for your environment
 BASE_PATH = Path(r"C:\Users\ChristopherCato\OneDrive - clarity-dx.com\Documents\Bill_Review_INTERNAL")
 
+# Database path
+DB_PATH = BASE_PATH / r"reference_tables\orders2.db"
+
+# Validation logs path
+VALIDATION_LOGS_PATH = BASE_PATH / "validation logs"
+
 # Folder paths with meaningful names
 FOLDERS = {
     # Unmapped Review App folders
@@ -25,10 +31,11 @@ FOLDERS = {
     
     # Shared folders
     'PDF_FOLDER': BASE_PATH / r"pdf\dual_ocr\pdfs\archive",
+    
+    # Rate Corrections folders
+    'RATE_FAILURES_FOLDER': BASE_PATH / "validation logs",
+    'RATE_RESOLUTIONS_FOLDER': BASE_PATH / r"scripts\VAILIDATION\data\extracts\resolved_rates",
 }
-
-# Database configuration
-DB_PATH = BASE_PATH / r"reference_tables\orders2.db"
 
 # Fuzzy matching settings
 FUZZY_MATCH_THRESHOLD = 75  # Minimum score for fuzzy matches (0-100)

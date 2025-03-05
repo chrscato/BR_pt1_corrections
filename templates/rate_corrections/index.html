@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Rate Corrections{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='css/rate_corrections.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left panel: TIN list -->
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Providers with Rate Failures</span>
+                <span id="tinCount" class="badge bg-danger rounded-pill">0</span>
+            </div>
+            <div class="card-body file-list p-0">
+                <div class="list-group" id="tinList">
+                    <!-- TINs will be listed here -->
+                    <div class="list-group-item text-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span class="ms-2">Loading providers...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Middle panel: Category pricing and provider details -->
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header">Provider Details</div>
+            <div class="card-body">
+                <div id="providerInfo">
+                    <div class="alert alert-info">Select a provider to view details</div>
+                </div>
+                
+                <div id="providerDetails" class="d-none">
+                    <h5 class="mb-3">Provider Information</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Provider:</strong> <span id="providerName"></span></p>
+                            <p><strong>TIN:</strong> <span id="providerTIN"></span></p>
+                            <p><strong>NPI:</strong> <span id="providerNPI"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Network:</strong> <span id="providerNetwork"></span></p>
+                            <p><strong>Location:</strong> <span id="providerLocation"></span></p>
+                            <p><strong>Status:</strong> <span id="providerStatus"></span></p>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mb-3">Failed Files</h5>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>File</th>
+                                    <th>Patient</th>
+                                    <th>DOS</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="failedFilesTable">
+                                <!-- Failed files will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Category Pricing Section -->
+                    <div class="category-pricing mt-4">
+                        <h5 class="mb-3">Category Pricing</h5>
+                        <div class="alert alert-info">
+                            Set a single price for all procedures in a category. This will update rates for all CPT codes in that category.
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="categorySelect" class="form-label">Select Category</label>
+                                <select class="form-select" id="categorySelect">
+                                    <option value="" selected disabled>Choose a category...</option>
+                                    <!-- Categories will be populated here -->
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="categoryRate" class="form-label">Rate ($)</label>
+                                <input type="number" class="form-control" id="categoryRate" min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button id="addCategoryButton" class="btn btn-primary w-100">Add</button>
+                            </div>
+                        </div>
+                        
+                        <div id="selectedCategories" class="mb-3">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Category</th>
+                                            <th>CPT Count</th>
+                                            <th>Rate</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="selectedCategoriesTable">
+                                        <!-- Selected categories will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid mb-3">
+                            <button id="updateRatesButton" class="btn btn-success" disabled>Update Rates for Selected Categories</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Resolving Section -->
+                    <div class="mt-4 border-top pt-3">
+                        <h5 class="mb-3">Resolve Rate Failures</h5>
+                        <p>After updating the rates, mark these rate failures as resolved.</p>
+                        <div class="d-grid">
+                            <button id="resolveButton" class="btn btn-outline-success">Mark All Failures for this TIN as Resolved</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Current Rates Panel -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Current Rates</span>
+                <span id="ratesCount" class="badge bg-secondary rounded-pill">0</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover m-0">
+                        <thead>
+                            <tr>
+                                <th>CPT</th>
+                                <th>Category</th>
+                                <th>Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody id="currentRatesTable">
+                            <!-- Current rates will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right panel: PDF viewer -->
+    <div class="col-md-3">
+        <div class="card mb-3">
+            <div class="card-header">Selected File</div>
+            <div class="card-body">
+                <p id="selectedFileName">No file selected</p>
+                <div id="pdfContainer" class="pdf-container">
+                    <iframe id="pdfFrame" class="pdf-viewer" src="about:blank"></iframe>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Category Information Panel -->
+        <div class="card">
+            <div class="card-header">Category Information</div>
+            <div class="card-body">
+                <div id="categoryInfo">
+                    <div class="alert alert-info">Select a category to view details</div>
+                </div>
+                
+                <div id="categoryDetails" class="d-none">
+                    <h6 id="categoryTitle" class="mb-2">Category Name</h6>
+                    <p><small id="categoryDescription">Category description will be shown here.</small></p>
+                    <div class="mb-3">
+                        <strong>CPT Codes:</strong>
+                        <div id="categoryCPTList" class="mt-2">
+                            <!-- CPT codes will be listed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmationModalLabel">Confirm Rate Update</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmationModalBody">
+                Are you sure you want to update rates for the selected categories?
+                <div id="confirmationDetails" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmActionButton">Update Rates</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resolution Modal -->
+<div class="modal fade" id="resolutionModal" tabindex="-1" aria-labelledby="resolutionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resolutionModalLabel">Confirm Resolution</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to mark all rate failures for this TIN as resolved?</p>
+                <p>This will remove them from the rate failures list.</p>
+                <div class="mb-3">
+                    <label for="resolutionNotes" class="form-label">Resolution Notes (optional)</label>
+                    <textarea class="form-control" id="resolutionNotes" rows="3" placeholder="Enter any notes about how these failures were resolved..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmResolutionButton">Mark as Resolved</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Include JavaScript files in correct dependency order -->
+<script src="{{ url_for('static', filename='js/rate_corrections/provider_management.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rate_corrections/category_pricing.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rate_corrections/main.js') }}"></script>
+{% endblock %}

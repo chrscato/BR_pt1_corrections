@@ -17,6 +17,10 @@ app.config.from_object('config')
 for folder in config.FOLDERS.values():
     folder.mkdir(parents=True, exist_ok=True)
 
+# Create validation logs directory if it doesn't exist
+validation_logs_folder = config.BASE_PATH / "validation logs"
+validation_logs_folder.mkdir(parents=True, exist_ok=True)
+
 # Create escalations directory if it doesn't exist
 escalations_folder = config.BASE_PATH / r"scripts\VAILIDATION\data\extracts\escalations"
 escalations_folder.mkdir(parents=True, exist_ok=True)
@@ -29,11 +33,15 @@ rejected_folder.mkdir(parents=True, exist_ok=True)
 from routes.unmapped import unmapped_bp
 from routes.corrections import corrections_bp
 from routes.escalations import escalations_bp
+from routes.rate_corrections import rate_corrections_bp
+from routes.provider_corrections import provider_corrections_bp
 
 # Register blueprints
 app.register_blueprint(unmapped_bp, url_prefix='/unmapped')
 app.register_blueprint(corrections_bp, url_prefix='/corrections')
 app.register_blueprint(escalations_bp, url_prefix='/escalations')
+app.register_blueprint(rate_corrections_bp, url_prefix='/rate_corrections')
+app.register_blueprint(provider_corrections_bp, url_prefix='/provider_corrections')
 
 
 

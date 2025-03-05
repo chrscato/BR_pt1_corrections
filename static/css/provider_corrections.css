@@ -1,0 +1,167 @@
+/**
+ * Specific styles for the Provider Corrections tool
+ */
+
+/* Provider list styling */
+.provider-list {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.list-group-item.active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+/* Add a subtle indicator for providers with missing fields */
+.provider-item {
+    padding: 10px;
+    border-left: 4px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.provider-item:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.provider-item.active {
+    border-left-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.provider-item.missing-critical {
+    border-left-color: #dc3545;
+}
+
+.provider-item.missing-some {
+    border-left-color: #ffc107;
+}
+
+.provider-item.missing-few {
+    border-left-color: #6c757d;
+}
+
+/* Missing fields badges */
+.missing-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    margin-left: 0.2rem;
+}
+
+/* Provider editor section */
+.provider-editor {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+/* Required field indicator */
+.required-field::after {
+    content: "*";
+    color: #dc3545;
+    margin-left: 4px;
+}
+
+/* Field status indicators */
+.field-missing {
+    background-color: rgba(220, 53, 69, 0.05);
+    border-color: #dc3545 !important;
+}
+
+.field-updated {
+    background-color: rgba(25, 135, 84, 0.05);
+    border-color: #198754 !important;
+}
+
+/* PDF viewer styling */
+.pdf-container {
+    width: 100%;
+    height: 400px;
+    position: relative;
+}
+
+.pdf-viewer {
+    width: 100%;
+    height: 100%;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+/* Field groups */
+.field-group {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.field-group-header {
+    margin-bottom: 15px;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 5px;
+    font-weight: 500;
+}
+
+/* Region image styling */
+.region-image {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Region tabs styling */
+.region-tabs .nav-link {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+}
+
+.region-tabs .nav-link.active {
+    font-weight: 500;
+}
+
+/* Search results styling */
+.search-results {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 15px;
+}
+
+.search-item {
+    cursor: pointer;
+    padding: 10px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.search-item:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+/* Dark mode adaptations */
+.dark-mode .provider-editor {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .field-group {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .field-missing {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.dark-mode .field-updated {
+    background-color: rgba(25, 135, 84, 0.1);
+}
+
+.dark-mode .provider-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .provider-item.active {
+    background-color: rgba(13, 110, 253, 0.2);
+}

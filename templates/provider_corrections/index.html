@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Provider Corrections{% endblock %}
+
+{% block styles %}
+<link href="{{ url_for('static', filename='css/provider_corrections.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left panel: Provider list -->
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Providers with Missing Data</span>
+                <span id="providerCount" class="badge bg-danger rounded-pill">0</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="input-group p-2">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search providers...">
+                    <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                <div class="provider-list">
+                    <div class="list-group" id="providerList">
+                        <!-- Providers will be listed here -->
+                        <div class="list-group-item text-center">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span class="ms-2">Loading providers...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Middle panel: Provider editor -->
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header">Provider Details</div>
+            <div class="card-body">
+                <div id="providerInfo">
+                    <div class="alert alert-info">Select a provider to edit information</div>
+                </div>
+                
+                <div id="providerEditor" class="d-none">
+                    <form id="providerForm">
+                        <input type="hidden" id="primaryKey">
+                        
+                        <!-- Basic Info -->
+                        <div class="field-group">
+                            <div class="field-group-header">Basic Information</div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="dbaName" class="form-label required-field">Business Name (DBA)</label>
+                                    <input type="text" class="form-control" id="dbaName">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="billingName" class="form-label required-field">Billing Name</label>
+                                    <input type="text" class="form-control" id="billingName">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="tin" class="form-label required-field">TIN</label>
+                                    <input type="text" class="form-control" id="tin" placeholder="XX-XXXXXXX">
+                                    <div class="form-text">9-digit Tax Identification Number</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="npi" class="form-label required-field">NPI</label>
+                                    <input type="text" class="form-control" id="npi" placeholder="XXXXXXXXXX">
+                                    <div class="form-text">10-digit National Provider Identifier</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Billing Address -->
+                        <div class="field-group">
+                            <div class="field-group-header">Billing Address</div>
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label for="billingAddress1" class="form-label required-field">Street Address</label>
+                                    <input type="text" class="form-control" id="billingAddress1">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label for="billingAddress2" class="form-label">Address Line 2</label>
+                                    <input type="text" class="form-control" id="billingAddress2">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-5">
+                                    <label for="billingCity" class="form-label required-field">City</label>
+                                    <input type="text" class="form-control" id="billingCity">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="billingState" class="form-label required-field">State</label>
+                                    <input type="text" class="form-control" id="billingState" maxlength="2">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="billingZip" class="form-label required-field">ZIP Code</label>
+                                    <input type="text" class="form-control" id="billingZip" maxlength="10">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Provider Status -->
+                        <div class="field-group">
+                            <div class="field-group-header">Provider Status</div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="providerType" class="form-label required-field">Provider Type</label>
+                                    <select class="form-select" id="providerType">
+                                        <option value="">Select type...</option>
+                                        <option value="Imaging">Imaging</option>
+                                        <option value="EMG">EMG</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="providerStatus" class="form-label required-field">Provider Status</label>
+                                    <select class="form-select" id="providerStatus">
+                                        <option value="">Select status...</option>
+                                        <option value="Contract Complete">Contract Complete</option>
+                                        <option value="Research Phase">Research Phase</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="providerNetwork" class="form-label required-field">Network Status</label>
+                                    <select class="form-select" id="providerNetwork">
+                                        <option value="">Select network...</option>
+                                        <option value="In Network">In Network</option>
+                                        <option value="Out of Network">Out of Network</option>
+                                        <option value="Pending">Pending</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Save Button -->
+                        <div class="d-grid mt-4">
+                            <button type="button" id="saveProviderButton" class="btn btn-primary">
+                                Save Provider Information
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Related Files Section -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Related Files</span>
+                <span id="filesCount" class="badge bg-secondary rounded-pill">0</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover m-0">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th>Patient</th>
+                                <th>Date of Service</th>
+                                <th>Issue</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="relatedFilesTable">
+                            <!-- Related files will be populated here -->
+                            <tr>
+                                <td colspan="5" class="text-center">No related files found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right panel: PDF viewer -->
+    <div class="col-md-3">
+        <div class="card mb-3">
+            <div class="card-header">Bill Preview</div>
+            <div class="card-body">
+                <p id="selectedFileName">No file selected</p>
+                <div class="region-tabs mb-2">
+                    <ul class="nav nav-tabs" id="regionTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="header-tab" data-bs-toggle="tab" data-bs-target="#header-region" type="button" role="tab">Header</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="footer-tab" data-bs-toggle="tab" data-bs-target="#footer-region" type="button" role="tab">Footer</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="full-tab" data-bs-toggle="tab" data-bs-target="#full-pdf" type="button" role="tab">Full PDF</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="header-region" role="tabpanel">
+                        <img id="headerImage" class="region-image" src="" alt="Header region">
+                    </div>
+                    <div class="tab-pane fade" id="footer-region" role="tabpanel">
+                        <img id="footerImage" class="region-image" src="" alt="Footer region">
+                    </div>
+                    <div class="tab-pane fade" id="full-pdf" role="tabpanel">
+                        <div class="pdf-container">
+                            <iframe id="pdfFrame" class="pdf-viewer" src="about:blank"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Search Results -->
+        <div class="card d-none" id="searchResultsCard">
+            <div class="card-header">Search Results</div>
+            <div class="card-body p-0">
+                <div id="searchResults" class="search-results">
+                    <!-- Search results will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmationModalLabel">Confirm Update</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmationModalBody">
+                Are you sure you want to update this provider?
+                <div id="confirmationDetails" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmUpdateButton">Update Provider</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Include JavaScript files in correct dependency order -->
+<script src="{{ url_for('static', filename='js/provider_corrections/provider_list.js') }}"></script>
+<script src="{{ url_for('static', filename='js/provider_corrections/provider_editor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/provider_corrections/main.js') }}"></script>
+{% endblock %}
