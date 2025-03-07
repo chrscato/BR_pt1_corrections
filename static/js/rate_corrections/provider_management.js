@@ -1,14 +1,17 @@
 /**
  * Provider management functionality for the Rate Corrections tool
- * Handles loading providers/TINs, displaying details, and file management
  */
 
-/**
- * Set up event listeners specifically for provider management
- */
-function setupProviderEventListeners() {
-    // No specific event listeners needed here
-    // Provider selection is handled via click handlers attached when loading the TIN list
+// Ensure the global state object exists
+if (!window.RateCorrections) {
+    window.RateCorrections = {
+        currentTIN: null,
+        currentProviderName: null,
+        currentProviderData: null,
+        selectedCategories: {},
+        allCategories: {},
+        currentRates: []
+    };
 }
 
 /**
@@ -25,10 +28,11 @@ async function loadTINs() {
         
         const data = await response.json();
         
-        // Check for error message from server
+        // Validate data
         if (data.error) {
             console.error('Server reported error:', data.error);
             showAlert(data.error, 'error');
+            return;
         }
         
         const tinList = document.getElementById('tinList');
@@ -40,71 +44,82 @@ async function loadTINs() {
             tinCount.textContent = data.tins ? data.tins.length : '0';
         }
 
-        if (data.tins && data.tins.length > 0) {
-            console.log(`Found ${data.tins.length} TINs with rate failures`);
-            data.tins.forEach(tin => {
-                const listItem = document.createElement('a');
-                listItem.className = 'list-group-item list-group-item-action list-group-item-tin';
-                listItem.href = '#';
-                
-                // Format the TIN with dashes for display
-                const formattedTIN = formatTIN(tin.tin);
-                
-                // Safely handle network status - check if it exists and is a string before using includes()
-                const networkStatus = tin.provider_network || '';
-                const isOutOfNetwork = typeof networkStatus === 'string' && networkStatus.includes('Out');
-                
-                // Format network status
-                const networkDisplay = isOutOfNetwork ? 
-                    '<span class="badge bg-danger">Out of Network</span>' : 
-                    '<span class="badge bg-success">In Network</span>';
-                
-                listItem.innerHTML = `
-                    <div class="d-flex w-100 justify-content-between">
-                        <h6 class="mb-1">${tin.provider_name || 'Unknown Provider'}</h6>
-                        <small>${networkDisplay}</small>
-                    </div>
-                    <p class="mb-1 small">TIN: ${formattedTIN}</p>
-                    <div class="d-flex w-100 justify-content-between">
-                        <small>${tin.cpt_codes ? tin.cpt_codes.length : 0} CPT codes</small>
-                        <small class="text-danger">${tin.failures_count || 0} failures</small>
-                    </div>
-                `;
-                
-                listItem.onclick = (e) => {
-                    e.preventDefault();
-                    // Remove active class from all TINs
-                    document.querySelectorAll('#tinList a').forEach(a => a.classList.remove('active'));
-                    // Add active class to clicked TIN
-                    listItem.classList.add('active');
-                    loadTINDetails(tin.tin, tin.provider_name || 'Unknown Provider');
-                };
-                
-                tinList.appendChild(listItem);
-            });
-        } else {
-            console.log("No TINs with rate failures found");
+        if (!data.tins || data.tins.length === 0) {
             tinList.innerHTML = '<div class="list-group-item">No TINs with rate failures found</div>';
+            return;
         }
+
+        // Render TIN list
+        data.tins.forEach(tin => {
+            const listItem = createTINListItem(tin);
+            tinList.appendChild(listItem);
+        });
     } catch (error) {
         console.error('Error loading TINs:', error);
         showAlert(`Error loading TINs: ${error.message}`, 'error');
-        
-        const tinList = document.getElementById('tinList');
-        tinList.innerHTML = `<div class="list-group-item text-danger">Error: ${error.message}</div>`;
     }
 }
 
 /**
- * Load detailed information about a TIN
- * @param {string} tin - The TIN to load details for
- * @param {string} providerName - The provider name
+ * Create a list item for a TIN
+ * @param {Object} tin - TIN data object
+ * @returns {HTMLAnchorElement} Created list item
+ */
+function createTINListItem(tin) {
+    const listItem = document.createElement('a');
+    listItem.className = 'list-group-item list-group-item-action';
+    listItem.href = '#';
+
+    // Format the TIN with dashes
+    const formattedTIN = formatTIN(tin.tin);
+    
+    // Determine network status
+    const networkStatus = tin.provider_network || '';
+    const isOutOfNetwork = typeof networkStatus === 'string' && networkStatus.includes('Out');
+    const networkBadge = isOutOfNetwork 
+        ? '<span class="badge bg-danger">Out of Network</span>' 
+        : '<span class="badge bg-success">In Network</span>';
+
+    listItem.innerHTML = `
+        <div class="d-flex w-100 justify-content-between">
+            <h6 class="mb-1">${tin.provider_name || 'Unknown Provider'}</h6>
+            <small>${networkBadge}</small>
+        </div>
+        <p class="mb-1 small">TIN: ${formattedTIN}</p>
+        <div class="d-flex w-100 justify-content-between">
+            <small>${tin.cpt_codes ? tin.cpt_codes.length : 0} CPT codes</small>
+            <small class="text-danger">${tin.failures_count || 0} failures</small>
+        </div>
+    `;
+
+    listItem.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        // Remove active class from all TINs
+        document.querySelectorAll('#tinList a').forEach(a => a.classList.remove('active'));
+        
+        // Add active class to clicked TIN
+        listItem.classList.add('active');
+        
+        // Load TIN details
+        loadTINDetails(tin.tin, tin.provider_name || 'Unknown Provider');
+    });
+
+    return listItem;
+}
+
+/**
+ * Load detailed information for a specific TIN
+ * @param {string} tin - TIN to load
+ * @param {string} providerName - Name of the provider
  */
 async function loadTINDetails(tin, providerName) {
     try {
         console.log(`Loading details for TIN: ${tin}`);
-        currentTIN = tin;
-        currentProviderName = providerName;
+        
+        // Update global state using the window object
+        window.RateCorrections.currentTIN = tin;
+        window.RateCorrections.currentProviderName = providerName;
         
         // Show loading indicator
         document.getElementById('providerInfo').innerHTML = `
@@ -114,10 +129,9 @@ async function loadTINDetails(tin, providerName) {
         `;
         
         // Reset selected categories
-        selectedCategories = {};
-        updateSelectedCategoriesTable();
+        window.RateCorrections.selectedCategories = {};
         
-        // Fetch the TIN details
+        // Fetch TIN details
         const response = await fetch(`/rate_corrections/api/tin/${tin}/details`);
         
         if (!response.ok) {
@@ -125,31 +139,25 @@ async function loadTINDetails(tin, providerName) {
         }
         
         const data = await response.json();
-        currentProviderData = data;
         
-        // Check for error message from server
+        // Validate data
         if (data.error) {
             console.error('Server reported error:', data.error);
             showAlert(data.error, 'error');
             return;
         }
         
-        console.log('Received TIN details:', data);
+        // Update global state
+        window.RateCorrections.currentProviderData = data;
         
-        // Display provider details
-        displayProviderDetails(data);
+        // Render provider details
+        renderProviderDetails(data);
         
-        // Display current rates
-        displayCurrentRates(data.current_rates);
+        // Extract and display unique CPT codes from failures
+        renderFailedCPTCodes(data.failures || []);
         
-        // Display failed files
-        displayFailedFiles(data.failures);
-        
-        // Reset update button state
-        const updateRatesButton = document.getElementById('updateRatesButton');
-        if (updateRatesButton) {
-            updateRatesButton.disabled = true;
-        }
+        // Render current rates
+        renderCurrentRates(data.current_rates || []);
     } catch (error) {
         console.error('Error loading TIN details:', error);
         showAlert(`Error loading TIN details: ${error.message}`, 'error');
@@ -163,47 +171,122 @@ async function loadTINDetails(tin, providerName) {
 }
 
 /**
- * Display provider details in the UI
+ * Render failed CPT codes in the table
+ * @param {Array} failures - Array of failure records
+ */
+function renderFailedCPTCodes(failures) {
+    const table = document.getElementById('failedFilesTable');
+    
+    // Clear table
+    table.innerHTML = '';
+    
+    if (failures.length === 0) {
+        table.innerHTML = `<tr><td colspan="3" class="text-center">No failed codes found</td></tr>`;
+        return;
+    }
+    
+    // Extract unique CPT codes from failures
+    const uniqueCPTCodes = new Set();
+    const cptsWithCategories = [];
+
+    failures.forEach(failure => {
+        // Handle multiple rate checks in a single failure
+        if (failure.rates && Array.isArray(failure.rates)) {
+            failure.rates.forEach(rate => {
+                if (rate.cpt && !uniqueCPTCodes.has(rate.cpt)) {
+                    uniqueCPTCodes.add(rate.cpt);
+                    cptsWithCategories.push({
+                        cpt: rate.cpt,
+                        category: rate.category || 'Uncategorized'
+                    });
+                }
+            });
+        }
+    });
+
+    // Render CPT codes
+    cptsWithCategories.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${item.cpt}</td>
+            <td>${item.category}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="validateCPT('${item.cpt}')">
+                    Validate
+                </button>
+            </td>
+        `;
+        table.appendChild(row);
+    });
+}
+
+/**
+ * Validate a CPT code
+ * @param {string} cptCode - CPT code to validate
+ */
+function validateCPT(cptCode) {
+    fetch('/rate_corrections/api/validate_cpt', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ cpt_code: cptCode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.valid) {
+            showAlert(`CPT ${cptCode} is valid. Description: ${data.description}`, 'success');
+        } else {
+            showAlert(`CPT ${cptCode} is not valid: ${data.message}`, 'warning');
+        }
+    })
+    .catch(error => {
+        console.error('Error validating CPT:', error);
+        showAlert(`Error validating CPT ${cptCode}`, 'error');
+    });
+}
+
+/**
+ * Render provider details in the UI
  * @param {Object} data - Provider data from the server
  */
-function displayProviderDetails(data) {
+function renderProviderDetails(data) {
+    // No failures found
     if (!data.failures || data.failures.length === 0) {
         document.getElementById('providerInfo').innerHTML = `
             <div class="alert alert-warning">
                 No rate failures found for TIN: ${formatTIN(data.tin)}
             </div>
         `;
-        
-        // Hide provider details
         document.getElementById('providerDetails').classList.add('d-none');
         return;
     }
     
-    // Show provider details section
+    // Show provider details
     document.getElementById('providerDetails').classList.remove('d-none');
     
-    // Get provider info from the first failure record
+    // Get provider info from first failure record
     const providerInfo = data.failures[0].provider_info || {};
     
-    // Provider name and TIN
-    document.getElementById('providerName').textContent = currentProviderName || 'Unknown Provider';
+    // Update provider details
+    document.getElementById('providerName').textContent = 
+        window.RateCorrections.currentProviderName || 'Unknown Provider';
     document.getElementById('providerTIN').textContent = formatTIN(data.tin);
-    
-    // Other provider details
     document.getElementById('providerNPI').textContent = providerInfo.NPI || 'N/A';
     document.getElementById('providerNetwork').textContent = providerInfo['Provider Network'] || 'Unknown';
     document.getElementById('providerLocation').textContent = providerInfo['Location'] || 'Unknown';
     document.getElementById('providerStatus').textContent = providerInfo['Provider Status'] || 'Unknown';
     
-    // Update provider info area
+    // Network status badge
     const networkStatus = providerInfo['Provider Network'] || '';
     const isOutOfNetwork = typeof networkStatus === 'string' && networkStatus.includes('Out');
     const networkClass = isOutOfNetwork ? 'danger' : 'success';
     const networkBadge = `<span class="badge bg-${networkClass}">${networkStatus}</span>`;
     
+    // Update provider info area
     document.getElementById('providerInfo').innerHTML = `
         <div class="provider-header">
-            <h5>${currentProviderName || 'Unknown Provider'}</h5>
+            <h5>${window.RateCorrections.currentProviderName || 'Unknown Provider'}</h5>
             ${networkBadge}
         </div>
         <p class="mb-2">TIN: ${formatTIN(data.tin)}</p>
@@ -212,131 +295,94 @@ function displayProviderDetails(data) {
 }
 
 /**
- * Display current rates in the table
+ * Render current rates in the table
  * @param {Array} rates - Array of current rates for the provider
  */
-function displayCurrentRates(rates) {
+function renderCurrentRates(rates) {
     const table = document.getElementById('currentRatesTable');
     const ratesCount = document.getElementById('ratesCount');
     
     // Store rates globally
-    currentRates = rates || [];
+    window.RateCorrections.currentRates = rates;
     
     // Update rates count
     if (ratesCount) {
-        ratesCount.textContent = currentRates.length;
+        ratesCount.textContent = rates.length;
     }
     
     // Clear table
     table.innerHTML = '';
     
-    if (!currentRates.length) {
+    if (!rates || rates.length === 0) {
         table.innerHTML = `<tr><td colspan="3" class="text-center">No rates found for this provider</td></tr>`;
         return;
     }
     
-    // Sort rates by category and then by CPT code
-    currentRates.sort((a, b) => {
-        if (a.category !== b.category) {
-            return a.category.localeCompare(b.category);
+    // Sort rates with robust error handling
+    const sortedRates = [...rates].sort((a, b) => {
+        // Handle null or undefined values
+        const categoryA = a?.category || '';
+        const categoryB = b?.category || '';
+        const procCdA = a?.proc_cd || '';
+        const procCdB = b?.proc_cd || '';
+        
+        // Compare categories first
+        if (categoryA !== categoryB) {
+            return categoryA.localeCompare(categoryB);
         }
-        return a.proc_cd.localeCompare(b.proc_cd);
+        
+        // If categories are the same, compare procedure codes
+        return procCdA.localeCompare(procCdB);
     });
     
-    // Display rates
-    currentRates.forEach(rate => {
+    // Render rates
+    sortedRates.forEach(rate => {
+        // Ensure rate exists and has necessary properties
+        if (!rate) return;
+        
         const row = document.createElement('tr');
+        row.id = `rate-${rate.proc_cd || 'unknown'}`;
         row.innerHTML = `
-            <td>${rate.proc_cd}</td>
-            <td>${rate.category}</td>
-            <td>$${parseFloat(rate.rate).toFixed(2)}</td>
+            <td>${rate.proc_cd || 'N/A'}</td>
+            <td>${rate.category || 'N/A'}</td>
+            <td>$${parseFloat(rate.rate || 0).toFixed(2)}</td>
         `;
-        
-        // Add ID for later reference
-        row.id = `rate-${rate.proc_cd}`;
-        
         table.appendChild(row);
     });
 }
 
-/**
- * Display failed files in the table
- * @param {Array} failures - Array of failure records
- */
-function displayFailedFiles(failures) {
-    const table = document.getElementById('failedFilesTable');
-    
-    // Clear table
-    table.innerHTML = '';
-    
-    if (!failures || !failures.length) {
-        table.innerHTML = `<tr><td colspan="4" class="text-center">No failed files found</td></tr>`;
-        return;
+// Utility functions (in case they're not defined globally)
+function formatTIN(tin) {
+    if (!tin || tin.length !== 9) return tin;
+    return `${tin.substring(0, 2)}-${tin.substring(2)}`;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    try {
+        return new Date(dateStr).toLocaleDateString();
+    } catch {
+        return dateStr;
     }
-    
-    // Display unique files
-    const uniqueFiles = {};
-    failures.forEach(failure => {
-        const fileName = failure.file_name;
-        uniqueFiles[fileName] = {
-            file_name: fileName,
-            patient_name: failure.patient_name,
-            date_of_service: failure.date_of_service,
-            order_id: failure.order_id
-        };
-    });
-    
-    // Display files
-    Object.values(uniqueFiles).forEach(file => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${file.file_name}</td>
-            <td>${file.patient_name || 'N/A'}</td>
-            <td>${formatDate(file.date_of_service)}</td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary" onclick="viewFile('${file.file_name}')">
-                    View
-                </button>
-            </td>
-        `;
-        
-        table.appendChild(row);
-    });
 }
 
-/**
- * View a specific file's PDF
- * @param {string} fileName - The file name to view
- */
-function viewFile(fileName) {
-    console.log(`Viewing file: ${fileName}`);
+// Shows an alert (in case it's not defined globally)
+function showAlert(message, type = 'success', duration = 3000) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.top = '20px';
+    alertDiv.style.right = '20px';
+    alertDiv.style.zIndex = '9999';
     
-    // Update selected file display
-    document.getElementById('selectedFileName').textContent = fileName;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
     
-    // Load PDF into iframe
-    const pdfFrame = document.getElementById('pdfFrame');
-    pdfFrame.src = `/rate_corrections/api/pdf/${fileName}`;
-}
-
-/**
- * Highlight rate rows after update
- * @param {Array} updatedCPTs - Array of CPT codes that were updated
- */
-function highlightUpdatedRates(updatedCPTs) {
-    // Remove any existing highlights
-    document.querySelectorAll('#currentRatesTable tr.row-updated').forEach(row => {
-        row.classList.remove('row-updated');
-    });
+    document.body.appendChild(alertDiv);
     
-    // Add highlight to updated rows
-    updatedCPTs.forEach(cpt => {
-        const row = document.getElementById(`rate-${cpt}`);
-        if (row) {
-            row.classList.add('row-updated');
-            
-            // Scroll to the row
-            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    });
+    setTimeout(() => {
+        alertDiv.classList.remove('show');
+        setTimeout(() => alertDiv.remove(), 300);
+    }, duration);
 }

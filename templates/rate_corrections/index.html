@@ -8,180 +8,209 @@
 
 {% block content %}
 <div class="row">
-    <!-- Left panel: TIN list -->
-    <div class="col-md-3">
-        <div class="card">
+    <!-- Left panel: Category summary -->
+    <div class="col-md-4">
+        <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Providers with Rate Failures</span>
-                <span id="tinCount" class="badge bg-danger rounded-pill">0</span>
+                <span>Categories with Missing Rates</span>
+                <span id="totalMissingCount" class="badge bg-danger rounded-pill">0</span>
             </div>
-            <div class="card-body file-list p-0">
-                <div class="list-group" id="tinList">
-                    <!-- TINs will be listed here -->
-                    <div class="list-group-item text-center">
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover m-0">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Missing Codes</th>
+                            <th>Providers</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="categorySummaryTable">
+                        <!-- Category summary will be populated here -->
+                        <tr>
+                            <td colspan="4" class="text-center">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span class="ms-2">Loading categories...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Distinct Codes List Card -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Distinct CPT Codes Needing Rates</span>
+                <span id="distinctCodesCount" class="badge bg-danger rounded-pill">0</span>
+            </div>
+            <div class="card-body p-2">
+                <div class="input-group mb-3">
+                    <input type="text" id="codeSearchInput" class="form-control" placeholder="Search CPT codes...">
+                    <button class="btn btn-outline-secondary" type="button" id="searchCodeBtn">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+                <div id="distinctCodesList" class="code-chips-container">
+                    <!-- Distinct codes will be displayed here as chips -->
+                    <div class="text-center">
                         <div class="spinner-border spinner-border-sm text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <span class="ms-2">Loading providers...</span>
+                        <span class="ms-2">Loading codes...</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Middle panel: Category pricing and provider details -->
-    <div class="col-md-6">
+    <!-- Middle panel: Provider summary -->
+    <div class="col-md-4">
         <div class="card mb-3">
-            <div class="card-header">Provider Details</div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Providers Needing Rates</span>
+                <span id="providersCount" class="badge bg-danger rounded-pill">0</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover m-0">
+                    <thead>
+                        <tr>
+                            <th>Provider</th>
+                            <th>Network</th>
+                            <th>Codes</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="providerSummaryTable">
+                        <!-- Provider summary will be populated here -->
+                        <tr>
+                            <td colspan="4" class="text-center">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span class="ms-2">Loading providers...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Provider Details Card (shown when provider is selected) -->
+        <div class="card mb-3 d-none" id="providerDetailsCard">
+            <div class="card-header">
+                <span id="selectedProviderName">Provider Details</span>
+            </div>
             <div class="card-body">
-                <div id="providerInfo">
-                    <div class="alert alert-info">Select a provider to view details</div>
+                <div id="providerDetails">
+                    <!-- Provider details will be displayed here -->
                 </div>
-                
-                <div id="providerDetails" class="d-none">
-                    <h5 class="mb-3">Provider Information</h5>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <p><strong>Provider:</strong> <span id="providerName"></span></p>
-                            <p><strong>TIN:</strong> <span id="providerTIN"></span></p>
-                            <p><strong>NPI:</strong> <span id="providerNPI"></span></p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Network:</strong> <span id="providerNetwork"></span></p>
-                            <p><strong>Location:</strong> <span id="providerLocation"></span></p>
-                            <p><strong>Status:</strong> <span id="providerStatus"></span></p>
-                        </div>
-                    </div>
-                    
-                    <h5 class="mb-3">Failed Files</h5>
-                    <div class="table-responsive mb-3">
-                        <table class="table table-sm table-bordered">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>File</th>
-                                    <th>Patient</th>
-                                    <th>DOS</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="failedFilesTable">
-                                <!-- Failed files will be populated here -->
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- Category Pricing Section -->
-                    <div class="category-pricing mt-4">
-                        <h5 class="mb-3">Category Pricing</h5>
-                        <div class="alert alert-info">
-                            Set a single price for all procedures in a category. This will update rates for all CPT codes in that category.
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="categorySelect" class="form-label">Select Category</label>
-                                <select class="form-select" id="categorySelect">
-                                    <option value="" selected disabled>Choose a category...</option>
-                                    <!-- Categories will be populated here -->
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="categoryRate" class="form-label">Rate ($)</label>
-                                <input type="number" class="form-control" id="categoryRate" min="0" step="0.01" placeholder="0.00">
-                            </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button id="addCategoryButton" class="btn btn-primary w-100">Add</button>
-                            </div>
-                        </div>
-                        
-                        <div id="selectedCategories" class="mb-3">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Category</th>
-                                            <th>CPT Count</th>
-                                            <th>Rate</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="selectedCategoriesTable">
-                                        <!-- Selected categories will be populated here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        
-                        <div class="d-grid mb-3">
-                            <button id="updateRatesButton" class="btn btn-success" disabled>Update Rates for Selected Categories</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Resolving Section -->
-                    <div class="mt-4 border-top pt-3">
-                        <h5 class="mb-3">Resolve Rate Failures</h5>
-                        <p>After updating the rates, mark these rate failures as resolved.</p>
-                        <div class="d-grid">
-                            <button id="resolveButton" class="btn btn-outline-success">Mark All Failures for this TIN as Resolved</button>
-                        </div>
+                <div id="providerCodesList" class="mt-3">
+                    <h6>Missing CPT Codes:</h6>
+                    <div class="code-chips-container">
+                        <!-- Provider's missing codes will be displayed here -->
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Current Rates Panel -->
+    </div>
+    
+    <!-- Right panel: Category Rate Setting -->
+    <div class="col-md-4">
         <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Current Rates</span>
-                <span id="ratesCount" class="badge bg-secondary rounded-pill">0</span>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover m-0">
+            <div class="card-header">Set Rates by Category</div>
+            <div class="card-body">
+                <!-- Category selector -->
+                <div class="mb-3">
+                    <label for="categorySelect" class="form-label">Select Category</label>
+                    <select class="form-select" id="categorySelect">
+                        <option value="" selected disabled>Choose a category...</option>
+                        <!-- Categories will be populated here -->
+                    </select>
+                </div>
+                
+                <!-- Rate input -->
+                <div class="mb-3">
+                    <label for="categoryRate" class="form-label">Set Rate ($)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" class="form-control" id="categoryRate" min="0" step="0.01" placeholder="0.00">
+                        <button id="addCategoryButton" class="btn btn-primary">Add</button>
+                    </div>
+                </div>
+                
+                <!-- Selected categories -->
+                <div id="selectedCategories" style="display: none;">
+                    <h6 class="mb-2">Categories to Update:</h6>
+                    <table class="table table-sm table-bordered">
                         <thead>
                             <tr>
-                                <th>CPT</th>
                                 <th>Category</th>
                                 <th>Rate</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody id="currentRatesTable">
-                            <!-- Current rates will be populated here -->
+                        <tbody id="selectedCategoriesTable">
+                            <!-- Selected categories will be populated here -->
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Right panel: PDF viewer -->
-    <div class="col-md-3">
-        <div class="card mb-3">
-            <div class="card-header">Selected File</div>
-            <div class="card-body">
-                <p id="selectedFileName">No file selected</p>
-                <div id="pdfContainer" class="pdf-container">
-                    <iframe id="pdfFrame" class="pdf-viewer" src="about:blank"></iframe>
+                
+                <!-- Apply to providers section -->
+                <div class="mt-4 mb-3" id="providerSelectionSection" style="display: none;">
+                    <h6 class="mb-2">Apply To:</h6>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="providerScope" id="allProvidersRadio" value="all" checked>
+                        <label class="form-check-label" for="allProvidersRadio">
+                            All Providers with Missing Rates
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="providerScope" id="selectedProvidersRadio" value="selected">
+                        <label class="form-check-label" for="selectedProvidersRadio">
+                            Selected Providers Only
+                        </label>
+                    </div>
+                    
+                    <!-- Provider selector (shown when "Selected Providers" is chosen) -->
+                    <div id="providerSelector" class="mt-3" style="display: none;">
+                        <div class="provider-chips-container" id="selectedProvidersList">
+                            <!-- Selected providers will be displayed here as chips -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Update button -->
+                <div class="d-grid">
+                    <button id="updateRatesButton" class="btn btn-success" disabled>Update Rates</button>
                 </div>
             </div>
         </div>
         
-        <!-- Category Information Panel -->
-        <div class="card">
-            <div class="card-header">Category Information</div>
+        <!-- Category Details Card -->
+        <div class="card mb-3">
+            <div class="card-header" id="categoryDetailHeader">Category Details</div>
             <div class="card-body">
                 <div id="categoryInfo">
-                    <div class="alert alert-info">Select a category to view details</div>
+                    <div class="alert alert-info">
+                        Select a category to view details
+                    </div>
                 </div>
                 
                 <div id="categoryDetails" class="d-none">
                     <h6 id="categoryTitle" class="mb-2">Category Name</h6>
                     <p><small id="categoryDescription">Category description will be shown here.</small></p>
-                    <div class="mb-3">
-                        <strong>CPT Codes:</strong>
-                        <div id="categoryCPTList" class="mt-2">
-                            <!-- CPT codes will be listed here -->
-                        </div>
+                    
+                    <h6 class="mt-3 mb-2">Missing CPT Codes:</h6>
+                    <div id="categoryMissingCodes" class="code-chips-container mb-3">
+                        <!-- Category's missing CPT codes will be displayed here -->
+                    </div>
+                    
+                    <h6 class="mt-3 mb-2">All CPT Codes in Category:</h6>
+                    <div id="categoryAllCodes" class="code-chips-container">
+                        <!-- All CPT codes in the category will be displayed here -->
                     </div>
                 </div>
             </div>
@@ -208,35 +237,12 @@
         </div>
     </div>
 </div>
-
-<!-- Resolution Modal -->
-<div class="modal fade" id="resolutionModal" tabindex="-1" aria-labelledby="resolutionModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="resolutionModalLabel">Confirm Resolution</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to mark all rate failures for this TIN as resolved?</p>
-                <p>This will remove them from the rate failures list.</p>
-                <div class="mb-3">
-                    <label for="resolutionNotes" class="form-label">Resolution Notes (optional)</label>
-                    <textarea class="form-control" id="resolutionNotes" rows="3" placeholder="Enter any notes about how these failures were resolved..."></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" id="confirmResolutionButton">Mark as Resolved</button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <!-- Include JavaScript files in correct dependency order -->
-<script src="{{ url_for('static', filename='js/rate_corrections/provider_management.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rate_corrections/code_summary.js') }}"></script>
 <script src="{{ url_for('static', filename='js/rate_corrections/category_pricing.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rate_corrections/provider_summary.js') }}"></script>
 <script src="{{ url_for('static', filename='js/rate_corrections/main.js') }}"></script>
 {% endblock %}

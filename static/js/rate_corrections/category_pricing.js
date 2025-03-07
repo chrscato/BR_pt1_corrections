@@ -64,7 +64,7 @@ async function loadCategories() {
         }
         
         // Store categories globally
-        allCategories = data.categories || {};
+        window.RateCorrections.allCategories = data.categories || {};
         
         // Populate the category select dropdown
         const categorySelect = document.getElementById('categorySelect');
@@ -75,15 +75,15 @@ async function loadCategories() {
             }
             
             // Add categories
-            Object.keys(allCategories).sort().forEach(category => {
+            Object.keys(window.RateCorrections.allCategories).sort().forEach(category => {
                 const option = document.createElement('option');
                 option.value = category;
-                option.textContent = `${category} (${allCategories[category].count} CPT codes)`;
+                option.textContent = `${category} (${window.RateCorrections.allCategories[category].count} CPT codes)`;
                 categorySelect.appendChild(option);
             });
         }
         
-        console.log(`Loaded ${Object.keys(allCategories).length} categories`);
+        console.log(`Loaded ${Object.keys(window.RateCorrections.allCategories).length} categories`);
     } catch (error) {
         console.error('Error loading categories:', error);
         showAlert(`Error loading categories: ${error.message}`, 'error');
@@ -96,6 +96,8 @@ async function loadCategories() {
  */
 function showCategoryDetails(category) {
     console.log(`Showing details for category: ${category}`);
+    
+    const allCategories = window.RateCorrections.allCategories;
     
     if (!allCategories[category]) {
         console.error(`Category not found: ${category}`);
@@ -144,7 +146,7 @@ function addCategoryToSelection() {
     }
     
     // Add to selected categories
-    selectedCategories[category] = rate;
+    window.RateCorrections.selectedCategories[category] = rate;
     
     // Update display
     updateSelectedCategoriesTable();
@@ -168,6 +170,8 @@ function addCategoryToSelection() {
  */
 function updateSelectedCategoriesTable() {
     const table = document.getElementById('selectedCategoriesTable');
+    const allCategories = window.RateCorrections.allCategories;
+    const selectedCategories = window.RateCorrections.selectedCategories;
     
     // Clear table
     table.innerHTML = '';
@@ -203,13 +207,13 @@ function updateSelectedCategoriesTable() {
  */
 function removeCategory(category) {
     // Remove from selected categories
-    delete selectedCategories[category];
+    delete window.RateCorrections.selectedCategories[category];
     
     // Update display
     updateSelectedCategoriesTable();
     
     // Disable update button if no categories selected
-    if (Object.keys(selectedCategories).length === 0) {
+    if (Object.keys(window.RateCorrections.selectedCategories).length === 0) {
         document.getElementById('updateRatesButton').disabled = true;
     }
 }
@@ -218,12 +222,15 @@ function removeCategory(category) {
  * Show confirmation modal for updating rates
  */
 function showUpdateConfirmation() {
+    const selectedCategories = window.RateCorrections.selectedCategories;
+    const allCategories = window.RateCorrections.allCategories;
+    
     if (Object.keys(selectedCategories).length === 0) {
         showAlert('Please select at least one category', 'warning');
         return;
     }
     
-    if (!currentTIN) {
+    if (!window.RateCorrections.currentTIN) {
         showAlert('No provider selected', 'warning');
         return;
     }
@@ -236,8 +243,8 @@ function showUpdateConfirmation() {
     const confirmationDetails = document.getElementById('confirmationDetails');
     confirmationDetails.innerHTML = `
         <div class="alert alert-info mb-0">
-            <p><strong>Provider:</strong> ${currentProviderName}</p>
-            <p><strong>TIN:</strong> ${formatTIN(currentTIN)}</p>
+            <p><strong>Provider:</strong> ${window.RateCorrections.currentProviderName}</p>
+            <p><strong>TIN:</strong> ${formatTIN(window.RateCorrections.currentTIN)}</p>
             <p><strong>Categories:</strong> ${Object.keys(selectedCategories).length}</p>
             <p><strong>Total CPT codes affected:</strong> ${totalCPTs}</p>
             <div class="mt-2">
@@ -260,12 +267,15 @@ function showUpdateConfirmation() {
  * Update rates for the selected categories
  */
 async function updateCategoryRates() {
+    const selectedCategories = window.RateCorrections.selectedCategories;
+    const allCategories = window.RateCorrections.allCategories;
+    
     if (Object.keys(selectedCategories).length === 0) {
         showAlert('Please select at least one category', 'warning');
         return;
     }
     
-    if (!currentTIN) {
+    if (!window.RateCorrections.currentTIN) {
         showAlert('No provider selected', 'warning');
         return;
     }
@@ -283,8 +293,8 @@ async function updateCategoryRates() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                tin: currentTIN,
-                provider_name: currentProviderName,
+                tin: window.RateCorrections.currentTIN,
+                provider_name: window.RateCorrections.currentProviderName,
                 state: 'XX', // Default state if not available
                 category_rates: selectedCategories
             }),
@@ -314,7 +324,7 @@ async function updateCategoryRates() {
         });
         
         // Reload TIN details to refresh rates
-        loadTINDetails(currentTIN, currentProviderName);
+        loadTINDetails(window.RateCorrections.currentTIN, window.RateCorrections.currentProviderName);
         
         // Wait for data to load then highlight updated rates
         setTimeout(() => {
@@ -322,7 +332,7 @@ async function updateCategoryRates() {
         }, 1000);
         
         // Reset selected categories
-        selectedCategories = {};
+        window.RateCorrections.selectedCategories = {};
         updateSelectedCategoriesTable();
         
     } catch (error) {
