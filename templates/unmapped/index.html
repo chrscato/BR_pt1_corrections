@@ -36,23 +36,7 @@
                     <label for="filemakerInput" class="form-label">FileMaker Record Number</label>
                     <input type="text" class="form-control" id="filemakerInput">
                 </div>
-                <div class="row g-2 mb-2">
-                    <div class="col">
-                        <button id="saveButton" class="btn btn-primary w-100" disabled>Save Changes</button>
-                    </div>
-                </div>
-                <div class="row g-2">
-                    <div class="col">
-                        <button id="notFoundButton" class="btn btn-warning w-100" disabled>NOT FOUND IN FILEMAKER</button>
-                    </div>
-                    <div class="col">
-                        <button id="escalateButton" class="btn btn-danger w-100" disabled>ESCALATE</button>
-                    </div>
-                </div>
-                <div class="form-text mt-2">
-                    Use "NOT FOUND IN FILEMAKER" to mark records that cannot be found in the database.
-                    Use "ESCALATE" to send a record for further review with additional notes.
-                </div>
+                <button id="saveButton" class="btn btn-primary" disabled>Save Changes</button>
             </div>
         </div>
         
@@ -132,37 +116,12 @@
         </div>
     </div>
 </div>
-
-<!-- Escalation Modal -->
-<div class="modal fade" id="escalateModal" tabindex="-1" aria-labelledby="escalateModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="escalateModalLabel">Escalate Record</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="escalationNote" class="form-label">Please provide a reason for escalation:</label>
-                    <textarea class="form-control" id="escalationNote" rows="4" placeholder="Enter notes about why this record needs escalation..."></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="escalateSubmitButton">Submit Escalation</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div id="fileContent" class="file-content"></div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/unmapped/pdf-loader.js') }}"></script>
-<script src="{{ url_for('static', filename='js/unmapped/service-line-editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/unmapped/main.js') }}"></script>
 <script src="{{ url_for('static', filename='js/unmapped/patient-editor.js') }}"></script>
+<script src="{{ url_for('static', filename='js/unmapped/service-line-editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/unmapped/search.js') }}"></script>
 {% endblock %}
-

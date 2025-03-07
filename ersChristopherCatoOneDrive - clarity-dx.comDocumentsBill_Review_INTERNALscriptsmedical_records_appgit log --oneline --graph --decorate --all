@@ -1,0 +1,87 @@
+[33mcommit 3b31bebdd4c5a357b88420a679b1857f226c2cd1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author:     Christopher Cato <christopher.cato@clarity-dx.com>
+AuthorDate: Wed Mar 5 14:56:33 2025 -0500
+Commit:     Christopher Cato <christopher.cato@clarity-dx.com>
+CommitDate: Wed Mar 5 14:56:33 2025 -0500
+
+    provider page changes
+
+[33mcommit f226d958a908f66c6651e0d53a7785d1fc5ee627[m
+Author:     Christopher Cato <christopher.cato@clarity-dx.com>
+AuthorDate: Wed Mar 5 13:07:54 2025 -0500
+Commit:     Christopher Cato <christopher.cato@clarity-dx.com>
+CommitDate: Wed Mar 5 13:07:54 2025 -0500
+
+    fix provider data
+
+[33mcommit d3c8fadbdd7f1cb3d2029affc1a183b7cb8e05e8[m
+Author:     Christopher Cato <christopher.cato@clarity-dx.com>
+AuthorDate: Wed Mar 5 12:56:19 2025 -0500
+Commit:     Christopher Cato <christopher.cato@clarity-dx.com>
+CommitDate: Wed Mar 5 12:56:19 2025 -0500
+
+    added provider corrections page
+
+[33mcommit 7509b5ac5fce93267b977c104658615e1b249bc8[m
+Author:     Christopher Cato <christopher.cato@clarity-dx.com>
+AuthorDate: Tue Mar 4 18:49:11 2025 -0500
+Commit:     Christopher Cato <christopher.cato@clarity-dx.com>
+CommitDate: Tue Mar 4 18:49:11 2025 -0500
+
+    updates
+
+[33mcommit 38c8fc125480cdcdeec4321d941ede4a7a992376[m
+Author:     Christopher Cato <christopher.cato@clarity-dx.com>
+AuthorDate: Tue Mar 4 00:23:55 2025 -0500
+Commit:     Christopher Cato <christopher.cato@clarity-dx.com>
+CommitDate: Tue Mar 4 00:23:55 2025 -0500
+
+    resolved fixes
+
+[33mcommit 5a61a6c4135d455dcd80b9734d2828865de1801b[m
+Author:     Christopher Cato <christopher.cato@clarity-dx.com>
+AuthorDate: Mon Mar 3 22:33:39 2025 -0500
+Commit:     Christopher Cato <christopher.cato@clarity-dx.com>
+CommitDate: Mon Mar 3 22:33:39 2025 -0500
+
+    changes
+
+[33mcommit b4f1c1fb9359e7ff3640167bcb633f3314a1b0d3[m
+Author:     Christopher Cato <christopher.cato@clarity-dx.com>
+AuthorDate: Mon Mar 3 17:31:15 2025 -0500
+Commit:     Christopher Cato <christopher.cato@clarity-dx.com>
+CommitDate: Mon Mar 3 17:31:15 2025 -0500
+
+    fixed folder name
+
+[33mcommit 9ca4dd9cee99240d0bc39ea5586dd7498d3c33da[m
+Author:     Christopher Cato <christopher.cato@clarity-dx.com>
+AuthorDate: Mon Mar 3 17:01:35 2025 -0500
+Commit:     Christopher Cato <christopher.cato@clarity-dx.com>
+CommitDate: Mon Mar 3 17:01:35 2025 -0500
+
+    added escalations page
+
+[33mcommit deda39b86f33010497259f7de8bb68603c4a2faf[m
+Author:     Christopher Cato <christopher.cato@clarity-dx.com>
+AuthorDate: Mon Mar 3 13:13:12 2025 -0500
+Commit:     Christopher Cato <christopher.cato@clarity-dx.com>
+CommitDate: Mon Mar 3 13:13:12 2025 -0500
+
+    enhancements ui and esclations and fixed not found button
+
+[33mcommit d01aa01f10ac5ee761244347d6e29c3b1589a5dd[m
+Author:     Christopher Cato <christopher.cato@clarity-dx.com>
+AuthorDate: Mon Mar 3 00:43:03 2025 -0500
+Commit:     Christopher Cato <christopher.cato@clarity-dx.com>
+CommitDate: Mon Mar 3 00:43:03 2025 -0500
+
+    fixed ocr pdf rendering
+
+[33mcommit a3b727c411ac0b9741095ea81709fea12c8bc5ba[m
+Author:     Christopher Cato <christopher.cato@clarity-dx.com>
+AuthorDate: Mon Mar 3 00:11:03 2025 -0500
+Commit:     Christopher Cato <christopher.cato@clarity-dx.com>
+CommitDate: Mon Mar 3 00:11:03 2025 -0500
+
+    first commit

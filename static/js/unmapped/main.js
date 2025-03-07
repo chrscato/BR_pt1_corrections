@@ -1,63 +1,371 @@
 /**
- * Main JavaScript functionality for the Unmapped Records Review tool.
- * This file initializes the app and ties together different modules.
+ * Main JavaScript functionality for the Unmapped Records Review tool
  */
 
-// Global variables
 let currentFileName = null;
 let currentData = null;
-window.patientInfoModified = false;
-window.serviceLinesModified = false;
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Initializing Unmapped Records Tool");
     loadFiles();
     setupEventListeners();
     debugPaths();
 });
 
+/**
+ * Set up event listeners for the UI elements
+ */
 function setupEventListeners() {
-    console.log("Setting up event listeners");
+    // Search button
     const searchButton = document.getElementById('searchButton');
     if (searchButton) {
         searchButton.addEventListener('click', function() {
-            if (typeof window.performSearch === 'function') {
-                window.performSearch();
-            } else {
-                console.error("performSearch function is not defined in the global scope");
-            }
+            performSearch();
         });
-    } else {
-        console.warn("Search button not found in the DOM");
     }
-    
+
+    // Save button
     const saveButton = document.getElementById('saveButton');
     if (saveButton) {
-        saveButton.addEventListener('click', saveChanges);
+        saveButton.addEventListener('click', function() {
+            saveChanges();
+        });
+    }
+}
+
+/**
+ * Load the list of unmapped files
+ */
+async function loadFiles() {
+    try {
+        const response = await fetch('/unmapped/api/files');
+        const data = await response.json();
+        const fileList = document.getElementById('fileList');
+        fileList.innerHTML = '';
+
+        if (data.files && data.files.length > 0) {
+            data.files.forEach(file => {
+                const listItem = document.createElement('a');
+                listItem.className = 'list-group-item list-group-item-action';
+                listItem.textContent = file;
+                listItem.href = '#';
+                listItem.onclick = (e) => {
+                    e.preventDefault();
+                    loadFile(file);
+                };
+                fileList.appendChild(listItem);
+            });
+        } else {
+            fileList.innerHTML = '<div class="list-group-item">No unmapped files found</div>';
+        }
+    } catch (error) {
+        console.error('Error loading files:', error);
+        const fileList = document.getElementById('fileList');
+        fileList.innerHTML = '<div class="list-group-item text-danger">Error loading files</div>';
+    }
+}
+
+/**
+ * Load a specific file and display its content
+ * @param {string} filename - Name of the file to load
+ */
+async function loadFile(filename) {
+    try {
+        // Update UI to show loading state
+        document.getElementById('recordDetails').innerHTML = '<div class="alert alert-info">Loading file data...</div>';
+        
+        // Clear any previous search results
+        document.getElementById('matchResults').innerHTML = '';
+        document.getElementById('matchCount').textContent = '0';
+        
+        // Fetch the file data
+        const response = await fetch(`/unmapped/api/file/${filename}`);
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to load file');
+        }
+        
+        // Store current data
+        currentFileName = filename;
+        currentData = result.data;
+        
+        // Update record details display
+        displayRecordDetails();
+        
+        // Load the PDF
+        loadPDF(filename);
+        
+        // Pre-populate the search form
+        prepopulateSearch(filename);
+        
+        // Enable the save button
+        document.getElementById('saveButton').disabled = false;
+        
+        // Highlight the selected file in the list
+        const fileItems = document.querySelectorAll('#fileList a');
+        fileItems.forEach(item => {
+            if (item.textContent === filename) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    } catch (error) {
+        console.error('Error loading file:', error);
+        document.getElementById('recordDetails').innerHTML = 
+            `<div class="alert alert-danger">Error loading file: ${error.message}</div>`;
+    }
+}
+
+/**
+ * Display the record details in the UI
+ */
+function displayRecordDetails() {
+    if (!currentData) return;
+    
+    const recordDetails = document.getElementById('recordDetails');
+    const patientInfo = currentData.patient_info || {};
+    const serviceLines = currentData.service_lines || [];
+    
+    let html = `
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Patient Information</span>
+                <button class="btn btn-sm btn-outline-primary" onclick="editPatientInfo()">Edit</button>
+            </div>
+            <div class="card-body">
+                <p><strong>Name:</strong> ${patientInfo.patient_name || 'N/A'}</p>
+                <p><strong>DOB:</strong> ${patientInfo.patient_dob || 'N/A'}</p>
+                <p><strong>Zip:</strong> ${patientInfo.patient_zip || 'N/A'}</p>
+            </div>
+        </div>
+    `;
+    
+    // Service Lines
+    html += `
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Service Lines</span>
+                <button class="btn btn-sm btn-outline-primary" onclick="editServiceLines()">Edit</button>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover m-0">
+                    <thead>
+                        <tr>
+                            <th>DOS</th>
+                            <th>CPT</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    if (serviceLines.length > 0) {
+        serviceLines.forEach(line => {
+            html += `
+                <tr>
+                    <td>${line.date_of_service || 'N/A'}</td>
+                    <td>${line.cpt_code || 'N/A'}</td>
+                    <td>${line.charge_amount || 'N/A'}</td>
+                </tr>
+            `;
+        });
     } else {
-        console.warn("Save button not found in the DOM");
+        html += `<tr><td colspan="3" class="text-center">No service lines found</td></tr>`;
     }
     
-    const notFoundButton = document.getElementById('notFoundButton');
-    if (notFoundButton) {
-        notFoundButton.addEventListener('click', handleNotFound);
-    } else {
-        console.warn("Not Found button not found in the DOM");
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    recordDetails.innerHTML = html;
+    
+    // Populate the Order ID and FileMaker input fields
+    document.getElementById('orderIdInput').value = currentData.order_id || '';
+    document.getElementById('filemakerInput').value = currentData.filemaker_record_number || '';
+}
+
+/**
+ * Load the PDF into the viewer
+ * @param {string} filename - Name of the file to load
+ */
+function loadPDF(filename) {
+    // Load the full PDF
+    const pdfFrame = document.getElementById('pdfFrame');
+    pdfFrame.src = `/unmapped/api/pdf/${filename}`;
+    
+    // Load the header region
+    loadPDFRegion(filename, 'header', 'headerImage');
+    
+    // Load the service lines region
+    loadPDFRegion(filename, 'service_lines', 'serviceImage');
+}
+
+/**
+ * Load a specific region of a PDF
+ * @param {string} filename - Name of the file to load
+ * @param {string} region - Region name (header, service_lines, footer)
+ * @param {string} imgId - ID of the image element to update
+ */
+async function loadPDFRegion(filename, region, imgId) {
+    try {
+        const response = await fetch(`/unmapped/api/pdf_region/${filename}/${region}`);
+        const data = await response.json();
+        
+        if (data.image) {
+            const imgElement = document.getElementById(imgId);
+            if (imgElement) {
+                imgElement.src = data.image;
+            }
+        }
+    } catch (error) {
+        console.error(`Error loading ${region} PDF region:`, error);
+    }
+}
+
+/**
+ * Pre-populate the search form with data from the file
+ * @param {string} filename - Name of the file to load
+ */
+async function prepopulateSearch(filename) {
+    try {
+        const response = await fetch(`/unmapped/api/extract_patient_info/${filename}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('firstNameSearch').value = data.first_name || '';
+            document.getElementById('lastNameSearch').value = data.last_name || '';
+            document.getElementById('dosSearch').value = data.dos || '';
+            
+            // Auto-search if we have data
+            if ((data.first_name || data.last_name) && data.dos) {
+                performSearch();
+            }
+        }
+    } catch (error) {
+        console.error('Error pre-populating search:', error);
+    }
+}
+
+/**
+ * Perform a database search using the form data
+ */
+async function performSearch() {
+    try {
+        const firstName = document.getElementById('firstNameSearch').value;
+        const lastName = document.getElementById('lastNameSearch').value;
+        const dosDate = document.getElementById('dosSearch').value;
+        const monthsRange = document.getElementById('monthsRange').value;
+        
+        if (!firstName && !lastName) {
+            document.getElementById('searchStatus').innerHTML = 
+                '<div class="alert alert-warning">Please enter at least a first or last name</div>';
+            return;
+        }
+        
+        // Show loading indicator
+        document.getElementById('searchStatus').innerHTML = 
+            '<div class="alert alert-info">Searching...</div>';
+        
+        const response = await fetch('/unmapped/api/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                first_name: firstName,
+                last_name: lastName,
+                dos_date: dosDate,
+                months_range: monthsRange
+            }),
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Search failed');
+        }
+        
+        displaySearchResults(result.results);
+    } catch (error) {
+        console.error('Search error:', error);
+        document.getElementById('searchStatus').innerHTML = 
+            `<div class="alert alert-danger">Search error: ${error.message}</div>`;
+    }
+}
+
+/**
+ * Display search results in the UI
+ * @param {Array} results - Search results to display
+ */
+function displaySearchResults(results) {
+    const matchResults = document.getElementById('matchResults');
+    const matchCount = document.getElementById('matchCount');
+    const searchStatus = document.getElementById('searchStatus');
+    
+    if (!results || results.length === 0) {
+        matchResults.innerHTML = '';
+        matchCount.textContent = '0';
+        searchStatus.innerHTML = '<div class="alert alert-warning">No matches found</div>';
+        return;
     }
     
-    const escalateButton = document.getElementById('escalateButton');
-    if (escalateButton) {
-        escalateButton.addEventListener('click', showEscalateModal);
-    } else {
-        console.warn("Escalate button not found in the DOM");
-    }
+    // Update match count
+    matchCount.textContent = results.length.toString();
+    searchStatus.innerHTML = '';
     
-    const escalateSubmitButton = document.getElementById('escalateSubmitButton');
-    if (escalateSubmitButton) {
-        escalateSubmitButton.addEventListener('click', submitEscalation);
-    } else {
-        console.warn("Escalate submit button not found in the DOM");
-    }
+    // Display results
+    let html = '';
+    results.forEach(result => {
+        const matchScore = result.match_score ? Math.round(result.match_score) : 'N/A';
+        const daysFromTarget = result.days_from_target !== undefined ? result.days_from_target : 'N/A';
+        
+        html += `
+            <div class="card mb-2">
+                <div class="card-header p-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong>${result.Patient_Last_Name}, ${result.Patient_First_Name}</strong>
+                        <button class="btn btn-sm btn-success" 
+                                onclick="applyMatch('${result.Order_ID}', '${result.FileMaker_Record_Number}')">
+                            Apply
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-2">
+                    <p class="mb-1"><small>Order ID: ${result.Order_ID}</small></p>
+                    <p class="mb-1"><small>FileMaker: ${result.FileMaker_Record_Number}</small></p>
+                    <p class="mb-1"><small>DOS: ${result.DOS_List || 'N/A'}</small></p>
+                    <p class="mb-1"><small>CPT: ${result.CPT_List || 'N/A'}</small></p>
+                    <div class="d-flex justify-content-between">
+                        <span class="badge bg-primary">Match: ${matchScore}%</span>
+                        <span class="badge bg-info">Days: ${daysFromTarget}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    matchResults.innerHTML = html;
+}
+
+/**
+ * Apply a match from the search results
+ * @param {string} orderId - Order ID to apply
+ * @param {string} fileMakerRecord - FileMaker record number to apply
+ */
+function applyMatch(orderId, fileMakerRecord) {
+    document.getElementById('orderIdInput').value = orderId;
+    document.getElementById('filemakerInput').value = fileMakerRecord;
+    
+    // Highlight the inputs to show they've been updated
+    document.getElementById('orderIdInput').classList.add('border-success');
+    document.getElementById('filemakerInput').classList.add('border-success');
+    
+    // Enable the save button
+    document.getElementById('saveButton').disabled = false;
 }
 
 /**
@@ -88,20 +396,9 @@ async function saveChanges() {
             changes.push(`FileMaker record number set to ${fileMakerRecord}`);
         }
         
-        // Check if patient info or service lines were modified
-        if (window.patientInfoModified) {
-            changes.push(`Patient information was modified`);
-        }
-        
-        if (window.serviceLinesModified) {
-            changes.push(`Service lines were modified`);
-        }
-        
         // Show saving indicator
         document.getElementById('saveButton').disabled = true;
         document.getElementById('saveButton').textContent = 'Saving...';
-        document.getElementById('notFoundButton').disabled = true;
-        document.getElementById('escalateButton').disabled = true;
         
         // Send the updated data to the server
         const response = await fetch('/unmapped/api/save', {
@@ -122,12 +419,8 @@ async function saveChanges() {
             throw new Error(result.error || 'Save failed');
         }
         
-        // Reset modification flags
-        window.patientInfoModified = false;
-        window.serviceLinesModified = false;
-        
-        // Show success message using the new showAlert function
-        showAlert('Changes saved successfully!', 'success');
+        // Show success message
+        alert('Changes saved successfully!');
         
         // Reload the file list
         loadFiles();
@@ -145,436 +438,34 @@ async function saveChanges() {
         document.getElementById('filemakerInput').value = '';
         document.getElementById('saveButton').disabled = true;
         document.getElementById('saveButton').textContent = 'Save Changes';
-        document.getElementById('notFoundButton').disabled = true;
-        document.getElementById('escalateButton').disabled = true;
         
     } catch (error) {
         console.error('Save error:', error);
-        showAlert(`Error saving changes: ${error.message}`, 'error');
+        alert(`Error saving changes: ${error.message}`);
         document.getElementById('saveButton').disabled = false;
         document.getElementById('saveButton').textContent = 'Save Changes';
-        document.getElementById('notFoundButton').disabled = false;
-        document.getElementById('escalateButton').disabled = false;
-    }
-}
-
-
-/**
- * Handle the "Not Found in FileMaker" action
- * Moves the file to the review2 folder without requiring Order ID
- */
-async function handleNotFound() {
-    try {
-        if (!currentFileName || !currentData) {
-            showAlert('No file loaded', 'error');
-            return;
-        }
-        
-        // Show processing indicator
-        document.getElementById('notFoundButton').disabled = true;
-        document.getElementById('notFoundButton').innerHTML = 'Processing...';
-        document.getElementById('saveButton').disabled = true;
-        document.getElementById('escalateButton').disabled = true;
-        
-        // Send the request to move the file to review2 folder
-        const response = await fetch('/unmapped/api/not_found', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                filename: currentFileName,
-                content: currentData
-            }),
-        });
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.error || 'Operation failed');
-        }
-        
-        // Show success message
-        showAlert('File marked as Not Found and moved to review2 folder', 'success');
-        
-        // Reload the file list
-        loadFiles();
-        
-        // Clear the current file
-        currentFileName = null;
-        currentData = null;
-        
-        // Reset the UI
-        document.getElementById('recordDetails').innerHTML = '<div class="alert alert-info">Select a file to review</div>';
-        document.getElementById('pdfFrame').src = 'about:blank';
-        document.getElementById('headerImage').src = '';
-        document.getElementById('serviceImage').src = '';
-        document.getElementById('orderIdInput').value = '';
-        document.getElementById('filemakerInput').value = '';
-        document.getElementById('saveButton').disabled = true;
-        document.getElementById('notFoundButton').disabled = true;
-        document.getElementById('notFoundButton').innerHTML = 'NOT FOUND IN FILEMAKER';
-        document.getElementById('escalateButton').disabled = true;
-        
-    } catch (error) {
-        console.error('Not Found operation error:', error);
-        showAlert(`Error: ${error.message}`, 'error');
-        document.getElementById('notFoundButton').disabled = false;
-        document.getElementById('notFoundButton').innerHTML = 'NOT FOUND IN FILEMAKER';
-        document.getElementById('saveButton').disabled = false;
-        document.getElementById('escalateButton').disabled = false;
-    }
-}
-
-
-async function loadFiles() {
-    try {
-        console.log("Fetching unmapped files list");
-        const response = await fetch('/unmapped/api/files');
-        const data = await response.json();
-        const fileList = document.getElementById('fileList');
-        fileList.innerHTML = '';
-
-        console.log("Files response:", data);
-
-        if (data.files && data.files.length > 0) {
-            console.log(`Found ${data.files.length} unmapped files`);
-            data.files.forEach(file => {
-                const listItem = document.createElement('a');
-                listItem.className = 'list-group-item list-group-item-action';
-                listItem.textContent = file;
-                listItem.href = '#';
-                listItem.onclick = (e) => {
-                    e.preventDefault();
-                    loadFile(file);
-                };
-                fileList.appendChild(listItem);
-            });
-        } else {
-            console.log("No unmapped files found");
-            fileList.innerHTML = '<div class="list-group-item">No unmapped files found</div>';
-            
-            // Add a helpful message about checking file paths
-            const pathInfoItem = document.createElement('div');
-            pathInfoItem.className = 'list-group-item';
-            pathInfoItem.innerHTML = `
-                <div class="alert alert-info mb-0">
-                    <p class="mb-2"><strong>No files found</strong></p>
-                    <p>Check that your configuration has the correct paths:</p>
-                    <code>config.FOLDERS['UNMAPPED_FOLDER']</code>
-                    <p class="mt-2">See debug path information in browser console.</p>
-                </div>
-            `;
-            fileList.appendChild(pathInfoItem);
-        }
-    } catch (error) {
-        console.error('Error loading files:', error);
-        document.getElementById('fileList').innerHTML = `
-            <div class="list-group-item text-danger">Error loading files: ${error.message}</div>
-            <div class="list-group-item">
-                <small>Path: /unmapped/api/files</small><br>
-                <small>Check the server logs for more information.</small>
-            </div>
-        `;
-    }
-}
-
-async function loadFile(filename) {
-    try {
-        document.getElementById('recordDetails').innerHTML = '<div class="alert alert-info">Loading file data...</div>';
-
-        const response = await fetch(`/unmapped/api/file/${filename}`);
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Failed to load file');
-
-        currentFileName = filename;
-        currentData = result.data;
-
-        // Update selected file in the list
-        const fileItems = document.querySelectorAll('#fileList a');
-        fileItems.forEach(item => {
-            if (item.textContent === filename) {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
-        });
-
-        displayRecordDetails();
-        loadPDF(filename);
-        
-        // Pre-populate search fields with patient info from the file
-        if (typeof window.prepopulateSearch === 'function') {
-            window.prepopulateSearch(filename);
-        } else {
-            console.error("prepopulateSearch function is not defined in the global scope");
-        }
-
-        document.getElementById('saveButton').disabled = false;
-        document.getElementById('notFoundButton').disabled = false;
-        document.getElementById('escalateButton').disabled = false;
-
-    } catch (error) {
-        console.error('Error loading file:', error);
-        document.getElementById('recordDetails').innerHTML = `<div class="alert alert-danger">Error loading file: ${error.message}</div>`;
-    }
-}
-
-
-/**
- * Display the record details in the UI
- */
-function displayRecordDetails() {
-    if (!currentData) return;
-    
-    const recordDetails = document.getElementById('recordDetails');
-    const patientInfo = currentData.patient_info || {};
-    const serviceLines = currentData.service_lines || [];
-    
-    let html = `
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Patient Information</span>
-                <button class="btn btn-sm btn-outline-primary" onclick="editPatientInfo()">Edit</button>
-            </div>
-            <div class="card-body">
-                <p><strong>Name:</strong> ${patientInfo.patient_name || ''}</p>
-                <p><strong>DOB:</strong> ${patientInfo.patient_dob || ''}</p>
-                <p><strong>Zip:</strong> ${patientInfo.patient_zip || ''}</p>
-            </div>
-        </div>
-    `;
-    
-    // Service Lines
-    html += `
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Service Lines</span>
-                <button class="btn btn-sm btn-outline-primary" onclick="editServiceLines()">Edit</button>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-sm table-hover m-0">
-                    <thead>
-                        <tr>
-                            <th>DOS</th>
-                            <th>CPT</th>
-                            <th>Modifiers</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
-    
-    if (serviceLines.length > 0) {
-        serviceLines.forEach(line => {
-            // Format modifiers for display
-            let modifiersDisplay = '';
-            if (line.modifiers) {
-                if (Array.isArray(line.modifiers) && line.modifiers.length > 0) {
-                    modifiersDisplay = line.modifiers.join(', ');
-                } else if (typeof line.modifiers === 'string' && line.modifiers.length > 0) {
-                    modifiersDisplay = line.modifiers;
-                }
-            }
-            
-            html += `
-                <tr>
-                    <td>${line.date_of_service || ''}</td>
-                    <td>${line.cpt_code || ''}</td>
-                    <td>${modifiersDisplay}</td>
-                    <td>${line.charge_amount || ''}</td>
-                </tr>
-            `;
-        });
-    } else {
-        html += `<tr><td colspan="4" class="text-center">No service lines found</td></tr>`;
-    }
-    
-    html += `
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-    
-    recordDetails.innerHTML = html;
-    
-    // Populate the Order ID and FileMaker input fields
-    document.getElementById('orderIdInput').value = currentData.order_id || '';
-    document.getElementById('filemakerInput').value = currentData.filemaker_record_number || '';
-    
-    // Reset modification state for save button
-    const saveButton = document.getElementById('saveButton');
-    if (saveButton) {
-        if (window.patientInfoModified || window.serviceLinesModified) {
-            saveButton.classList.add('data-modified');
-            saveButton.textContent = `Save Changes (Modified)`;
-        } else {
-            saveButton.classList.remove('data-modified');
-            saveButton.textContent = `Save Changes`;
-        }
     }
 }
 
 /**
- * Show the escalation modal
- */
-function showEscalateModal() {
-    if (!currentFileName || !currentData) {
-        showAlert('No file loaded', 'error');
-        return;
-    }
-    
-    // Clear previous notes
-    document.getElementById('escalationNote').value = '';
-    
-    // Show the modal
-    const escalateModal = new bootstrap.Modal(document.getElementById('escalateModal'));
-    escalateModal.show();
-}
-
-/**
- * Submit an escalation
- */
-async function submitEscalation() {
-    try {
-        if (!currentFileName || !currentData) {
-            throw new Error('No file loaded');
-        }
-        
-        // Get the escalation notes
-        const notes = document.getElementById('escalationNote').value.trim();
-        if (!notes) {
-            throw new Error('Please provide notes for the escalation');
-        }
-        
-        // Show processing state
-        const escalateSubmitButton = document.getElementById('escalateSubmitButton');
-        escalateSubmitButton.disabled = true;
-        escalateSubmitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-        
-        // Send the escalation request
-        const response = await fetch('/unmapped/api/escalate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                filename: currentFileName,
-                content: currentData,
-                notes: notes
-            }),
-        });
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.error || 'Escalation failed');
-        }
-        
-        // Hide the modal
-        const escalateModal = bootstrap.Modal.getInstance(document.getElementById('escalateModal'));
-        if (escalateModal) {
-            escalateModal.hide();
-        }
-        
-        // Show success message
-        showAlert('File escalated successfully', 'success');
-        
-        // Reload the file list
-        loadFiles();
-        
-        // Clear the current file
-        currentFileName = null;
-        currentData = null;
-        
-        // Reset the UI
-        document.getElementById('recordDetails').innerHTML = '<div class="alert alert-info">Select a file to review</div>';
-        document.getElementById('pdfFrame').src = 'about:blank';
-        document.getElementById('headerImage').src = '';
-        document.getElementById('serviceImage').src = '';
-        document.getElementById('orderIdInput').value = '';
-        document.getElementById('filemakerInput').value = '';
-        document.getElementById('saveButton').disabled = true;
-        document.getElementById('notFoundButton').disabled = true;
-        document.getElementById('escalateButton').disabled = true;
-        
-    } catch (error) {
-        console.error('Escalation error:', error);
-        showAlert(`Error escalating file: ${error.message}`, 'error');
-        
-        // Reset button state
-        const escalateSubmitButton = document.getElementById('escalateSubmitButton');
-        escalateSubmitButton.disabled = false;
-        escalateSubmitButton.textContent = 'Submit Escalation';
-    }
-}
-
-/**
- * Show an alert message that automatically disappears
- * @param {string} message - The message to display
- * @param {string} type - Alert type ('success', 'error', 'info', 'warning')
- * @param {number} duration - Duration in milliseconds
- */
-function showAlert(message, type = 'success', duration = 3000) {
-    // Create the alert element
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    alertDiv.style.top = '20px';
-    alertDiv.style.right = '20px';
-    alertDiv.style.zIndex = '9999';
-    
-    // Add the message
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    
-    // Add to the document
-    document.body.appendChild(alertDiv);
-    
-    // Remove after the specified duration
-    setTimeout(() => {
-        alertDiv.classList.remove('show');
-        setTimeout(() => {
-            alertDiv.remove();
-        }, 300);
-    }, duration);
-}
-
-/**
- * Debug paths to help troubleshoot
+ * Utility function to debug paths
  */
 async function debugPaths() {
     try {
-        console.log('Fetching debug paths...');
         const response = await fetch('/debug-paths');
-        
-        if (!response.ok) {
-            console.error(`Debug paths failed: ${response.status} ${response.statusText}`);
-            return;
-        }
-        
         const data = await response.json();
-        console.log('Debug paths data:', data);
-        
-        // Specifically log unmapped folder information
-        if (data.folder_paths && data.folder_paths.UNMAPPED_FOLDER) {
-            console.log('Unmapped folder path:', data.folder_paths.UNMAPPED_FOLDER);
-            console.log('Unmapped folder exists:', data.folder_paths.UNMAPPED_FOLDER_exists);
-            
-            if (data.file_counts && data.file_counts.UNMAPPED_FOLDER !== undefined) {
-                console.log('Unmapped file count:', data.file_counts.UNMAPPED_FOLDER);
-            }
-        }
+        console.log('Debug paths:', data);
     } catch (error) {
         console.error('Error fetching debug paths:', error);
     }
 }
 
-// Make sure functions are globally available
-window.showAlert = showAlert;
-window.showEscalateModal = showEscalateModal;
-window.submitEscalation = submitEscalation;
-window.displayRecordDetails = displayRecordDetails;
-window.loadPDF = loadPDF || function() { console.error("loadPDF function is not defined"); };
+// Placeholder functions for patient and service line editing
+// These would be implemented in their respective files
+function editPatientInfo() {
+    alert('Patient info editing not implemented yet');
+}
+
+function editServiceLines() {
+    alert('Service line editing not implemented yet');
+}

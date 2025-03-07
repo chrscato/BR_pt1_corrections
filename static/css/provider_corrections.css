@@ -83,10 +83,11 @@
 }
 
 .pdf-viewer {
-    width: 100%;
+    width: 80%; /* Adjust this percentage to make the PDF viewer larger */
     height: 100%;
     border: 1px solid #dee2e6;
     border-radius: 4px;
+    overflow-y: auto;
 }
 
 /* Field groups */
@@ -164,4 +165,14 @@
 
 .dark-mode .provider-item.active {
     background-color: rgba(13, 110, 253, 0.2);
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.file-panel {
+    width: 20%; /* Adjust this percentage to make the file panel smaller */
+    overflow-y: auto;
 }

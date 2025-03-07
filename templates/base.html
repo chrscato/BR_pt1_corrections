@@ -42,6 +42,17 @@
                             OCR Corrections
                         </a>
                     </li>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/rate_corrections' in request.path %}active{% endif %}" href="{{ url_for('rate_corrections.index') }}">
+                            Rate Corrections
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/provider_corrections' in request.path %}active{% endif %}" href="{{ url_for('provider_corrections.index') }}">
+                            Provider Corrections
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link {% if '/escalations' in request.path %}active{% endif %}" href="{{ url_for('escalations.index') }}">
                             Escalations
