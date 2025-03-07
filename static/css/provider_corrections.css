@@ -1,28 +1,76 @@
 /**
  * Specific styles for the Provider Corrections tool
+ * Zero padding version with completely minimal spacing
  */
+
+/* Reset margins and paddings */
+.container-fluid {
+    padding: 0 !important;
+}
+
+/* Ensure no gutters between components */
+.row {
+    margin: 0 !important;
+}
+
+/* Make card borders less prominent */
+.card {
+    border: none !important;
+    border-radius: 0 !important;
+    margin-bottom: 1px !important;
+}
+
+.card-header {
+    padding: 2px 5px !important;
+    background-color: #f0f0f0 !important;
+    border-bottom: 1px solid #ddd !important;
+}
+
+.card-body {
+    padding: 0 !important;
+}
+
+/* PDF viewer styling */
+.pdf-viewer-panel {
+    height: calc(100vh - 110px);
+    overflow: hidden;
+}
+
+.pdf-viewer {
+    width: 100%;
+    height: 100%;
+    border: none !important;
+}
+
+/* Region image styling */
+.region-image {
+    max-width: 100%;
+    max-height: calc(100vh - 110px) !important;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto !important;
+}
+
+/* Remove list group item padding */
+.list-group-item {
+    padding: 2px 5px !important;
+    border-radius: 0 !important;
+}
 
 /* Provider list styling */
 .provider-list {
-    max-height: 600px;
-    overflow-y: auto;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
-.list-group-item.active {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-    color: white;
-}
-
-/* Add a subtle indicator for providers with missing fields */
 .provider-item {
-    padding: 10px;
-    border-left: 4px solid transparent;
-    transition: all 0.2s ease;
+    padding: 3px 5px !important;
+    border-bottom: 1px solid #ddd !important;
+    border-left: 3px solid transparent;
 }
 
 .provider-item:hover {
-    background-color: rgba(13, 110, 253, 0.1);
+    background-color: rgba(13, 110, 253, 0.05);
 }
 
 .provider-item.active {
@@ -42,37 +90,46 @@
     border-left-color: #6c757d;
 }
 
-/* Missing fields badges */
-.missing-badge {
-    font-size: 0.7rem;
-    padding: 0.15rem 0.4rem;
-    margin-left: 0.2rem;
+/* Form controls with minimal padding */
+.form-control, .form-select {
+    padding: 2px 4px !important;
+    height: auto !important;
+    min-height: 0 !important;
 }
 
-/* Provider editor section */
-.provider-editor {
-    background-color: #f8f9fa;
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
+.form-label {
+    margin-bottom: 1px !important;
+    font-size: 0.8rem !important;
+}
+
+/* Field groups with minimal spacing */
+.field-group {
+    background-color: #f8f8f8;
+    border-radius: 0;
+    padding: 2px 5px !important;
+    margin-bottom: 2px !important;
+}
+
+.field-group-header {
+    margin-bottom: 2px !important;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 2px !important;
+    font-weight: 500;
+    font-size: 0.85rem !important;
 }
 
 /* Required field indicator */
 .required-field::after {
     content: "*";
     color: #dc3545;
-    margin-left: 4px;
+    margin-left: 1px;
 }
 
-/* Field status indicators */
-.field-missing {
-    background-color: rgba(220, 53, 69, 0.05);
-    border-color: #dc3545 !important;
-}
-
-.field-updated {
-    background-color: rgba(25, 135, 84, 0.05);
-    border-color: #198754 !important;
+/* Reduce alert padding */
+.alert {
+    padding: 2px 5px !important;
+    margin: 1px 0 !important;
+    border-radius: 0 !important;
 }
 
 /* PDF viewer styling */
@@ -83,11 +140,10 @@
 }
 
 .pdf-viewer {
-    width: 80%; /* Adjust this percentage to make the PDF viewer larger */
+    width: 100%;
     height: 100%;
     border: 1px solid #dee2e6;
     border-radius: 4px;
-    overflow-y: auto;
 }
 
 /* Field groups */
@@ -105,74 +161,35 @@
     font-weight: 500;
 }
 
-/* Region image styling */
-.region-image {
-    max-width: 100%;
-    height: auto;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+.nav-pills .nav-link.active {
+    background-color: #0d6efd;
+    color: white;
 }
 
-/* Region tabs styling */
-.region-tabs .nav-link {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.9rem;
+/* Tab content takes full height */
+.tab-content,
+.tab-pane {
+    height: 100% !important;
 }
 
-.region-tabs .nav-link.active {
-    font-weight: 500;
-}
-
-/* Search results styling */
-.search-results {
-    max-height: 300px;
-    overflow-y: auto;
-    margin-top: 15px;
-}
-
-.search-item {
-    cursor: pointer;
-    padding: 10px;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.search-item:hover {
-    background-color: rgba(13, 110, 253, 0.1);
-}
-
-/* Dark mode adaptations */
-.dark-mode .provider-editor {
-    background-color: rgba(255, 255, 255, 0.05);
+/* Dark mode support */
+.dark-mode .card-header {
+    background-color: #2b3035 !important;
+    border-color: #495057 !important;
 }
 
 .dark-mode .field-group {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: #343a40;
 }
 
-.dark-mode .field-missing {
-    background-color: rgba(220, 53, 69, 0.1);
-}
-
-.dark-mode .field-updated {
-    background-color: rgba(25, 135, 84, 0.1);
+.dark-mode .field-group-header {
+    border-color: #495057;
 }
 
 .dark-mode .provider-item:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 .dark-mode .provider-item.active {
     background-color: rgba(13, 110, 253, 0.2);
-}
-
-.container {
-    display: flex;
-    height: 100vh;
-}
-
-.file-panel {
-    width: 20%; /* Adjust this percentage to make the file panel smaller */
-    overflow-y: auto;
 }
