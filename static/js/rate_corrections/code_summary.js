@@ -10,11 +10,11 @@ let filteredCodes = [];
 
 // Initialize when document is ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Load the CPT code summary data
-    loadCodeSummary();
-    
     // Set up event handlers for code filtering
     setupCodeFilterHandlers();
+    
+    // Load actual data from the API
+    loadCodeSummary();
 });
 
 /**
@@ -34,13 +34,20 @@ async function loadCodeSummary() {
         
         // Store globally
         codeSummaryData = data;
+        window.codeSummaryData = data;
         
-        console.log('Loaded code summary data:', data);
+        console.log('Loaded real code summary data:', data);
         
         // Update UI with the data
         displayCategorySummary(data.code_summary);
         displayDistinctCodes(data.distinct_codes);
-        displayProviderSummary(data.provider_summary);
+        
+        // Call provider summary display if the function exists
+        if (typeof displayProviderSummary === 'function') {
+            displayProviderSummary(data.provider_summary);
+        } else {
+            console.warn('displayProviderSummary function not found');
+        }
         
         // Update count badges
         updateCountBadges(data);
@@ -48,9 +55,11 @@ async function loadCodeSummary() {
     } catch (error) {
         console.error('Error loading code summary:', error);
         showAlert(`Error loading code summary: ${error.message}`, 'error');
+        
+        // Fallback to mock data if the endpoint fails
+        loadDefaultCodeSummaryData();
     }
 }
-
 /**
  * Display the category summary in the table
  * @param {Object} categorySummary - The category summary data
@@ -78,13 +87,13 @@ function displayCategorySummary(categorySummary) {
     // Create table rows
     sortedCategories.forEach(([category, data]) => {
         // Skip if no missing codes
-        if (data.distinct_codes.length === 0) return;
+        if (!data.distinct_codes || data.distinct_codes.length === 0) return;
         
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${category}</td>
             <td>${data.distinct_codes.length}</td>
-            <td>${data.providers_count}</td>
+            <td>${data.providers_count || 0}</td>
             <td>
                 <button class="btn btn-sm btn-outline-primary view-category-btn" 
                         data-category="${category}">
@@ -104,6 +113,8 @@ function displayCategorySummary(categorySummary) {
             viewCategoryDetails(category);
         });
     });
+    
+    console.log('Category summary displayed successfully');
 }
 
 /**
@@ -131,6 +142,8 @@ function displayDistinctCodes(distinctCodes) {
     
     // Display codes as chips
     displayCodeChips(codesContainer, distinctCodes);
+    
+    console.log(`Displayed ${distinctCodes.length} distinct CPT codes`);
 }
 
 /**
@@ -185,6 +198,8 @@ function updateCountBadges(data) {
     if (providersCount) {
         providersCount.textContent = Object.keys(data.provider_summary || {}).length || 0;
     }
+    
+    console.log('Updated count badges with summary data');
 }
 
 /**
@@ -206,6 +221,8 @@ function setupCodeFilterHandlers() {
             }
         });
     }
+    
+    console.log('Code filter handlers set up');
 }
 
 /**
@@ -234,6 +251,8 @@ function filterCodes() {
     
     // Display filtered codes
     displayCodeChips(codesContainer, filteredCodes);
+    
+    console.log(`Filtered codes to ${filteredCodes.length} results matching "${searchTerm}"`);
 }
 
 /**
@@ -241,6 +260,8 @@ function filterCodes() {
  * @param {string} category - The category name
  */
 function viewCategoryDetails(category) {
+    console.log(`Viewing details for category: ${category}`);
+    
     // Mark as selected category
     selectedCategory = category;
     
@@ -286,51 +307,34 @@ function viewCategoryDetails(category) {
         displayCodeChips(categoryMissingCodes, missingCodes);
     }
     
-    // Load all codes in this category from the API
-    loadCategoryDetails(category);
+    // Load all codes in this category
+    const allCodesElement = document.getElementById('categoryAllCodes');
+    if (allCodesElement) {
+        // For now, use the same codes until the real data is available
+        displayCodeChips(allCodesElement, missingCodes);
+    }
     
     // Highlight this category in the table
     highlightCategoryRow(category);
     
-    // Load this category into the rate setting section
-    selectCategoryForRateSetting(category);
-}
-
-/**
- * Load detailed information about a specific category
- * @param {string} category - The category name
- */
-async function loadCategoryDetails(category) {
-    try {
-        const response = await fetch('/rate_corrections/api/categories');
-        
-        if (!response.ok) {
-            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+    // Select this category in the rate setting section if the function exists
+    if (typeof selectCategoryForRateSetting === 'function') {
+        selectCategoryForRateSetting(category);
+    } else {
+        // Try to select the category in the dropdown manually
+        const categorySelect = document.getElementById('categorySelect');
+        if (categorySelect) {
+            for (let i = 0; i < categorySelect.options.length; i++) {
+                if (categorySelect.options[i].value === category) {
+                    categorySelect.selectedIndex = i;
+                    
+                    // Trigger change event
+                    const event = new Event('change');
+                    categorySelect.dispatchEvent(event);
+                    break;
+                }
+            }
         }
-        
-        const data = await response.json();
-        
-        if (data.error) {
-            throw new Error(data.error);
-        }
-        
-        // Check if category exists in the data
-        if (!data.categories || !data.categories[category]) {
-            throw new Error(`Category ${category} not found`);
-        }
-        
-        // Get all CPT codes for this category
-        const allCodes = data.categories[category].proc_codes || [];
-        
-        // Display all codes
-        const categoryAllCodes = document.getElementById('categoryAllCodes');
-        if (categoryAllCodes) {
-            displayCodeChips(categoryAllCodes, allCodes);
-        }
-        
-    } catch (error) {
-        console.error(`Error loading category details for ${category}:`, error);
-        showAlert(`Error loading category details: ${error.message}`, 'error');
     }
 }
 
@@ -347,7 +351,7 @@ function highlightCategoryRow(category) {
     
     // Add highlight to the selected category row
     allRows.forEach(row => {
-        const categoryCell = row.cells[0];
+        const categoryCell = row.cells && row.cells[0];
         if (categoryCell && categoryCell.textContent === category) {
             row.classList.add('table-primary');
         }
@@ -355,39 +359,18 @@ function highlightCategoryRow(category) {
 }
 
 /**
- * Select a category in the rate setting section
- * @param {string} category - The category name
- */
-function selectCategoryForRateSetting(category) {
-    const categorySelect = document.getElementById('categorySelect');
-    if (!categorySelect) return;
-    
-    // Find the option with the matching category
-    for (let i = 0; i < categorySelect.options.length; i++) {
-        const option = categorySelect.options[i];
-        if (option.value === category) {
-            categorySelect.selectedIndex = i;
-            
-            // Trigger the change event
-            const event = new Event('change');
-            categorySelect.dispatchEvent(event);
-            
-            break;
-        }
-    }
-}
-
-/**
  * View details for a specific CPT code
  * @param {string} cptCode - The CPT code
  */
 function viewCodeDetails(cptCode) {
+    console.log(`Viewing details for CPT code: ${cptCode}`);
+    
     // Find which categories this code belongs to
     let codeCategories = [];
     
     if (codeSummaryData && codeSummaryData.code_summary) {
         for (const [category, data] of Object.entries(codeSummaryData.code_summary)) {
-            if (data.distinct_codes.includes(cptCode)) {
+            if (data.distinct_codes && data.distinct_codes.includes(cptCode)) {
                 codeCategories.push(category);
             }
         }
@@ -465,3 +448,8 @@ function showAlert(message, type = 'success', duration = 3000, html = false) {
         }, 300);
     }, duration);
 }
+
+// Make functions available globally
+window.displayCodeChips = displayCodeChips;
+window.viewCategoryDetails = viewCategoryDetails;
+window.addCodeToSearch = addCodeToSearch;

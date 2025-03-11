@@ -8,8 +8,28 @@
 
 {% block content %}
 <div class="row">
-    <!-- Left panel: Category summary -->
+    <!-- Left panel: Provider list and category summary -->
     <div class="col-md-4">
+        <!-- Provider list card -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Providers Needing Rates</span>
+                <span id="tinCount" class="badge bg-danger rounded-pill">0</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="tinList">
+                    <!-- TINs will be listed here -->
+                    <div class="list-group-item text-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span class="ms-2">Loading providers...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Category summary card -->
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>Categories with Missing Rates</span>
@@ -20,7 +40,7 @@
                     <thead>
                         <tr>
                             <th>Category</th>
-                            <th>Missing Codes</th>
+                            <th>Missing</th>
                             <th>Providers</th>
                             <th>Action</th>
                         </tr>
@@ -66,153 +86,178 @@
         </div>
     </div>
     
-    <!-- Middle panel: Provider summary -->
-    <div class="col-md-4">
-        <div class="card mb-3">
+    <!-- Middle panel: Provider details and workflows -->
+    <div class="col-md-8">
+        <!-- Provider info and details card -->
+        <div class="card mb-3" id="providerCard">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Providers Needing Rates</span>
-                <span id="providersCount" class="badge bg-danger rounded-pill">0</span>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-sm table-hover m-0">
-                    <thead>
-                        <tr>
-                            <th>Provider</th>
-                            <th>Network</th>
-                            <th>Codes</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="providerSummaryTable">
-                        <!-- Provider summary will be populated here -->
-                        <tr>
-                            <td colspan="4" class="text-center">
-                                <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <span class="ms-2">Loading providers...</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <!-- Provider Details Card (shown when provider is selected) -->
-        <div class="card mb-3 d-none" id="providerDetailsCard">
-            <div class="card-header">
-                <span id="selectedProviderName">Provider Details</span>
+                <span>Provider Details</span>
+                <span id="providerName">No provider selected</span>
             </div>
             <div class="card-body">
-                <div id="providerDetails">
-                    <!-- Provider details will be displayed here -->
+                <!-- Provider basic info section -->
+                <div id="providerInfo">
+                    <div class="alert alert-info">
+                        Select a provider from the list to view details
+                    </div>
                 </div>
-                <div id="providerCodesList" class="mt-3">
-                    <h6>Missing CPT Codes:</h6>
-                    <div class="code-chips-container">
-                        <!-- Provider's missing codes will be displayed here -->
+                
+                <!-- Provider details will be shown when a provider is selected -->
+                <div id="providerDetails" class="d-none">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Provider:</strong> <span id="providerNameDetails">-</span></p>
+                            <p><strong>TIN:</strong> <span id="providerTIN">-</span></p>
+                            <p><strong>NPI:</strong> <span id="providerNPI">-</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Network:</strong> <span id="providerNetwork">-</span></p>
+                            <p><strong>Location:</strong> <span id="providerLocation">-</span></p>
+                            <p><strong>Status:</strong> <span id="providerStatus">-</span></p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Right panel: Category Rate Setting -->
-    <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">Set Rates by Category</div>
+        
+        <!-- Guided workflow card -->
+        <div id="guidedWorkflow" class="card mb-3 d-none">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Rate Correction Workflow</h5>
+            </div>
             <div class="card-body">
-                <!-- Category selector -->
+                <p>Choose how you want to update rates for this provider:</p>
+                
+                <div class="d-flex flex-column flex-md-row gap-3 mb-3">
+                    <div class="card workflow-option flex-grow-1" id="individualOption">
+                        <div class="card-body">
+                            <h5>Individual Codes</h5>
+                            <p>Set rates for specific CPT codes individually.</p>
+                            <p><small class="text-muted">Best for providers with a few missing codes.</small></p>
+                            <button class="btn btn-primary" onclick="showIndividualCodes()">
+                                Use Individual Codes
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card workflow-option flex-grow-1" id="categoryOption">
+                        <div class="card-body">
+                            <h5>Category-Based</h5>
+                            <p>Set rates for entire categories of codes at once.</p>
+                            <p><small class="text-muted">Best for providers with many missing codes.</small></p>
+                            <button class="btn btn-primary" onclick="showCategorySetting()">
+                                Use Categories
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="workflowProgress" class="mb-3 d-none">
+                    <div class="progress">
+                        <div id="workflowProgressBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <p class="text-muted mt-2"><small id="workflowStatus">Select a workflow option</small></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Missing Codes Section (Individual Code Rates) -->
+        <div id="missingCodesSection" class="card mb-3 d-none">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Missing CPT Codes</span>
+                <button class="btn btn-sm btn-outline-secondary" onclick="showGuidedWorkflow()">
+                    Back to Options
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>CPT</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Rate</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="missingCodesTable">
+                        <!-- Missing codes will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Category Setting Section -->
+        <div id="categorySettingSection" class="card mb-3 d-none">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Set Rates by Category</span>
+                <button class="btn btn-sm btn-outline-secondary" onclick="showGuidedWorkflow()">
+                    Back to Options
+                </button>
+            </div>
+            <div class="card-body">
                 <div class="mb-3">
-                    <label for="categorySelect" class="form-label">Select Category</label>
-                    <select class="form-select" id="categorySelect">
+                    <label for="workflowCategorySelect" class="form-label">Select Category</label>
+                    <select class="form-select" id="workflowCategorySelect">
                         <option value="" selected disabled>Choose a category...</option>
                         <!-- Categories will be populated here -->
                     </select>
                 </div>
                 
-                <!-- Rate input -->
                 <div class="mb-3">
-                    <label for="categoryRate" class="form-label">Set Rate ($)</label>
+                    <label for="workflowCategoryRate" class="form-label">Set Rate ($)</label>
                     <div class="input-group">
                         <span class="input-group-text">$</span>
-                        <input type="number" class="form-control" id="categoryRate" min="0" step="0.01" placeholder="0.00">
-                        <button id="addCategoryButton" class="btn btn-primary">Add</button>
+                        <input type="number" class="form-control" id="workflowCategoryRate" min="0" step="0.01" placeholder="0.00">
+                        <button id="workflowAddCategoryButton" class="btn btn-primary">Add</button>
                     </div>
                 </div>
                 
-                <!-- Selected categories -->
-                <div id="selectedCategories" style="display: none;">
+                <div id="workflowSelectedCategories" style="display: none;">
                     <h6 class="mb-2">Categories to Update:</h6>
                     <table class="table table-sm table-bordered">
                         <thead>
                             <tr>
                                 <th>Category</th>
+                                <th>Codes</th>
                                 <th>Rate</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody id="selectedCategoriesTable">
+                        <tbody id="workflowSelectedCategoriesTable">
                             <!-- Selected categories will be populated here -->
                         </tbody>
                     </table>
-                </div>
-                
-                <!-- Apply to providers section -->
-                <div class="mt-4 mb-3" id="providerSelectionSection" style="display: none;">
-                    <h6 class="mb-2">Apply To:</h6>
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="providerScope" id="allProvidersRadio" value="all" checked>
-                        <label class="form-check-label" for="allProvidersRadio">
-                            All Providers with Missing Rates
-                        </label>
-                    </div>
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="providerScope" id="selectedProvidersRadio" value="selected">
-                        <label class="form-check-label" for="selectedProvidersRadio">
-                            Selected Providers Only
-                        </label>
-                    </div>
                     
-                    <!-- Provider selector (shown when "Selected Providers" is chosen) -->
-                    <div id="providerSelector" class="mt-3" style="display: none;">
-                        <div class="provider-chips-container" id="selectedProvidersList">
-                            <!-- Selected providers will be displayed here as chips -->
-                        </div>
+                    <div class="d-grid mt-3">
+                        <button id="workflowUpdateCategoriesButton" class="btn btn-success">Update Categories</button>
                     </div>
-                </div>
-                
-                <!-- Update button -->
-                <div class="d-grid">
-                    <button id="updateRatesButton" class="btn btn-success" disabled>Update Rates</button>
                 </div>
             </div>
         </div>
         
-        <!-- Category Details Card -->
+        <!-- Current Rates Card -->
         <div class="card mb-3">
-            <div class="card-header" id="categoryDetailHeader">Category Details</div>
-            <div class="card-body">
-                <div id="categoryInfo">
-                    <div class="alert alert-info">
-                        Select a category to view details
-                    </div>
-                </div>
-                
-                <div id="categoryDetails" class="d-none">
-                    <h6 id="categoryTitle" class="mb-2">Category Name</h6>
-                    <p><small id="categoryDescription">Category description will be shown here.</small></p>
-                    
-                    <h6 class="mt-3 mb-2">Missing CPT Codes:</h6>
-                    <div id="categoryMissingCodes" class="code-chips-container mb-3">
-                        <!-- Category's missing CPT codes will be displayed here -->
-                    </div>
-                    
-                    <h6 class="mt-3 mb-2">All CPT Codes in Category:</h6>
-                    <div id="categoryAllCodes" class="code-chips-container">
-                        <!-- All CPT codes in the category will be displayed here -->
-                    </div>
-                </div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Current Provider Rates</span>
+                <span id="ratesCount" class="badge bg-primary rounded-pill">0</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover m-0">
+                    <thead>
+                        <tr>
+                            <th>CPT Code</th>
+                            <th>Category</th>
+                            <th>Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="currentRatesTable">
+                        <!-- Current rates will be populated here -->
+                        <tr>
+                            <td colspan="3" class="text-center">No rates to display</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -237,11 +282,37 @@
         </div>
     </div>
 </div>
+
+<!-- Resolution Modal -->
+<div class="modal fade" id="resolutionModal" tabindex="-1" aria-labelledby="resolutionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resolutionModalLabel">Resolve Rate Failures</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>All required rates have been set for this provider. Do you want to mark these rate failures as resolved?</p>
+                <div class="mb-3">
+                    <label for="resolutionNotes" class="form-label">Notes (optional)</label>
+                    <textarea class="form-control" id="resolutionNotes" rows="3" placeholder="Enter any notes about how these rates were resolved..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmResolutionButton">Mark as Resolved</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <!-- Include JavaScript files in correct dependency order -->
+<script src="{{ url_for('static', filename='js/rate_corrections/provider_management.js') }}"></script>
 <script src="{{ url_for('static', filename='js/rate_corrections/code_summary.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rate_corrections/provider_details.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rate_corrections/workflow.js') }}"></script>
 <script src="{{ url_for('static', filename='js/rate_corrections/category_pricing.js') }}"></script>
 <script src="{{ url_for('static', filename='js/rate_corrections/provider_summary.js') }}"></script>
 <script src="{{ url_for('static', filename='js/rate_corrections/main.js') }}"></script>

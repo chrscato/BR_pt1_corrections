@@ -1,213 +1,439 @@
 {% extends "base.html" %}
 
-{% block title %}Provider Corrections{% endblock %}
+{% block title %}Provider Corrections - Enhanced{% endblock %}
 
 {% block styles %}
 <link href="{{ url_for('static', filename='css/provider_corrections.css') }}" rel="stylesheet">
+<style>
+  /* Enhanced styles specifically for better footer viewing */
+  .tab-controls {
+    border-bottom: 1px solid #dee2e6;
+    padding: 5px 0;
+    background-color: #f8f9fa;
+  }
+  
+  .pdf-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* Highlight the footer section */
+  #footer-tab.active {
+    background-color: #0d6efd;
+    color: white;
+    font-weight: bold;
+  }
+  
+  /* Make the main panels more prominent */
+  .main-panel {
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+  
+  .pdf-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  /* Improve the region image display */
+  .region-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    min-height: 300px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .region-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  
+  /* Highlight required fields better */
+  .required-field::after {
+    content: " *";
+    color: #dc3545;
+    font-weight: bold;
+  }
+  
+  /* Add a highlight class for footer tab */
+  .priority-tab {
+    position: relative;
+  }
+  
+  .priority-tab::after {
+    content: "⭐";
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 12px;
+  }
+  
+  /* Form section improvements */
+  .form-section {
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+  }
+  
+  .form-section-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  /* Improve form layout for TIN/NPI */
+  .tin-npi-container {
+    background-color: #f8f9fa;
+    border-left: 3px solid #0d6efd;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+  
+  /* Quick navigation */
+  .quick-nav-bar {
+    position: sticky;
+    top: 0;
+    background-color: white;
+    padding: 5px;
+    z-index: 100;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  /* Dark mode compatibility */
+  .dark-mode .quick-nav-bar {
+    background-color: #212529;
+  }
+  
+  .dark-mode .tab-controls {
+    background-color: #343a40;
+    border-color: #495057;
+  }
+  
+  .dark-mode .form-section {
+    background-color: #343a40;
+  }
+  
+  .dark-mode .tin-npi-container {
+    background-color: #2b3035;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="row g-0">
-    <!-- Left side: Provider list extending full height -->
-    <div class="col-md-4">
-        <div class="card border-0 h-100">
-            <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fs-6">Providers with Missing Data</h5>
-                <span id="providerCount" class="badge bg-danger rounded-pill">0</span>
-            </div>
-            <div class="card-body p-0" style="height: calc(100vh - 110px); overflow-y: auto;">
-                <div class="input-group input-group-sm p-1">
-                    <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Search providers...">
-                    <button class="btn btn-outline-secondary btn-sm" type="button" id="searchButton">Search</button>
-                </div>
-                <div class="provider-list p-0">
-                    <div class="list-group list-group-flush" id="providerList">
-                        <!-- Providers will be listed here -->
-                        <div class="list-group-item py-1 px-2 text-center">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <span class="ms-2">Loading providers...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<div class="container-fluid p-0">
+  <div class="row g-0">
+    <!-- Left Panel: Provider List -->
+    <div class="col-md-3 pe-2">
+      <div class="card h-100">
+        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 fs-6">Providers Needing Data</h5>
+          <span id="providerCount" class="badge bg-danger rounded-pill">0</span>
         </div>
+        <div class="input-group px-1 pt-1">
+          <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Search providers...">
+          <button class="btn btn-sm btn-outline-secondary" id="searchButton">Search</button>
+        </div>
+        <div class="card-body p-0" style="height: calc(100vh - 110px); overflow-y: auto;">
+          <div class="provider-list p-0">
+            <div class="list-group list-group-flush" id="providerList">
+              <!-- Providers will be listed here -->
+              <div class="list-group-item py-1 px-2 text-center">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <span class="ms-2">Loading providers...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     
-    <!-- Right side: PDF above Provider Details with zero spacing -->
-    <div class="col-md-8" style="padding: 0;">
-        <!-- PDF Viewer Panel (top) - No margin/padding -->
-        <div class="pdf-viewer-panel">
-            <div class="card border-0">
-                <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fs-6">PDF: <span id="selectedFileName" class="filename-display">No file selected</span></h5>
-                    <div class="region-tabs">
-                        <ul class="nav nav-pills nav-sm" id="regionTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active py-0 px-2" id="footer-tab" data-bs-toggle="tab" data-bs-target="#footer-region" type="button" role="tab">Footer</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link py-0 px-2" id="full-tab" data-bs-toggle="tab" data-bs-target="#full-pdf" type="button" role="tab">Full PDF</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link py-0 px-2" id="header-tab" data-bs-toggle="tab" data-bs-target="#header-region" type="button" role="tab">Header</button>
-                            </li>
-                        </ul>
-                        </div>
-                    </div>
-
-                </div>
-            </div> <!-- ✅ CLOSES THE MISSING DIV FOR .card -->
-        </div> <!-- ✅ CLOSES THE MISSING DIV FOR .pdf-viewer-panel -->
-
-        
-        <!-- Provider Details Panel (bottom) - Zero spacing with PDF viewer above -->
-        <div class="provider-details-panel" style="margin-top: 0;">
-            <div class="card border-0">
-                <div class="card-header py-1 px-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 fs-6">Provider Details</h5>
-                        <button id="saveProviderButton" class="btn btn-primary btn-sm py-0 px-2">Save</button>
-                    </div>
-                </div>
-                <div class="card-body p-0" style="height: calc(100vh - 370px); overflow-y: auto;">
-                    <div id="providerInfo" class="p-2">
-                        <div class="alert alert-info py-1 px-2 mb-1">Select a provider to edit information</div>
-                    </div>
-                    
-                    <div id="providerEditor" class="d-none p-1">
-                        <form id="providerForm">
-                            <input type="hidden" id="primaryKey">
-                            
-                            <!-- Basic Info -->
-                            <div class="field-group p-1 mb-1">
-                                <div class="field-group-header py-1 mb-1">Basic Information</div>
-                                <div class="row g-1 mb-1">
-                                    <div class="col-md-6">
-                                        <label for="dbaName" class="form-label mb-0 required-field">Business Name (DBA)</label>
-                                        <input type="text" class="form-control form-control-sm" id="dbaName">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="billingName" class="form-label mb-0 required-field">Billing Name</label>
-                                        <input type="text" class="form-control form-control-sm" id="billingName">
-                                    </div>
-                                </div>
-                                <div class="row g-1 mb-1">
-                                    <div class="col-md-6">
-                                        <label for="tin" class="form-label mb-0 required-field">TIN</label>
-                                        <input type="text" class="form-control form-control-sm" id="tin" placeholder="XX-XXXXXXX">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="npi" class="form-label mb-0 required-field">NPI</label>
-                                        <input type="text" class="form-control form-control-sm" id="npi" placeholder="XXXXXXXXXX">
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Billing Address -->
-                            <div class="field-group p-1 mb-1">
-                                <div class="field-group-header py-1 mb-1">Billing Address</div>
-                                <div class="row g-1 mb-1">
-                                    <div class="col-12">
-                                        <label for="billingAddress1" class="form-label mb-0 required-field">Billing Address 1</label>
-                                        <input type="text" class="form-control form-control-sm" id="billingAddress1">
-                                    </div>
-                                </div>
-                                <div class="row g-1 mb-1">
-                                    <div class="col-12">
-                                        <label for="billingAddress2" class="form-label mb-0">Billing Address 2</label>
-                                        <input type="text" class="form-control form-control-sm" id="billingAddress2">
-                                    </div>
-                                </div>
-                                <div class="row g-1 mb-1">
-                                    <div class="col-md-5">
-                                        <label for="billingCity" class="form-label mb-0 required-field">Billing City</label>
-                                        <input type="text" class="form-control form-control-sm" id="billingCity">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label for="billingState" class="form-label mb-0 required-field">Billing State</label>
-                                        <input type="text" class="form-control form-control-sm" id="billingState" maxlength="2">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="billingZip" class="form-label mb-0 required-field">Billing ZIP</label>
-                                        <input type="text" class="form-control form-control-sm" id="billingZip" maxlength="10">
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Provider Status -->
-                            <div class="field-group p-1 mb-1">
-                                <div class="field-group-header py-1 mb-1">Provider Status</div>
-                                <div class="row g-1 mb-1">
-                                    <div class="col-md-4">
-                                        <label for="providerType" class="form-label mb-0 required-field">Provider Type</label>
-                                        <select class="form-select form-select-sm" id="providerType">
-                                            <option value="">Select type...</option>
-                                            <option value="Imaging">Imaging</option>
-                                            <option value="EMG">EMG</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="providerStatus" class="form-label mb-0 required-field">Provider Status</label>
-                                        <select class="form-select form-select-sm" id="providerStatus">
-                                            <option value="">Select status...</option>
-                                            <option value="Contract Complete">Contract Complete</option>
-                                            <option value="Research Phase">Research Phase</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="providerNetwork" class="form-label mb-0 required-field">Network Status</label>
-                                        <select class="form-select form-select-sm" id="providerNetwork">
-                                            <option value="">Select network...</option>
-                                            <option value="In Network">In Network</option>
-                                            <option value="Out of Network">Out of Network</option>
-                                            <option value="Pending">Pending</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
+    <!-- Main Content Panel -->
+    <div class="col-md-9">
+      <!-- Enhanced PDF Viewer Panel -->
+      <div class="main-panel mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center py-1 px-2">
+          <h5 class="mb-0 fs-6">PDF View: <span id="selectedFileName" class="filename-display">No file selected</span></h5>
+          <div id="pdfActions" class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" onclick="document.getElementById('full-tab').click()">
+              <i class="bi bi-file-earmark-pdf"></i> Full PDF
+            </button>
+          </div>
         </div>
+        
+        <!-- Tab Controls - Footer is now first and default -->
+        <div class="tab-controls">
+          <ul class="nav nav-pills nav-sm" id="regionTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active priority-tab" id="footer-tab" data-bs-toggle="tab" data-bs-target="#footer-region" type="button" role="tab">
+                <i class="bi bi-file-earmark-bottom"></i> Footer
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="full-tab" data-bs-toggle="tab" data-bs-target="#full-pdf" type="button" role="tab">
+                <i class="bi bi-file-earmark-pdf"></i> Full PDF
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="header-tab" data-bs-toggle="tab" data-bs-target="#header-region" type="button" role="tab">
+                <i class="bi bi-file-earmark-top"></i> Header
+              </button>
+            </li>
+          </ul>
+        </div>
+        
+        <!-- Tab Content with improved layouts -->
+        <div class="tab-content" style="height: calc(40vh - 70px)">
+          <!-- Footer Region (Default Active) -->
+          <div class="tab-pane fade show active" id="footer-region" role="tabpanel">
+            <div class="region-container">
+              <img id="footerImage" class="region-image" src="" alt="Footer region">
+              <div id="footerRegionStatus"></div>
+            </div>
+          </div>
+          
+          <!-- Full PDF View -->
+          <div class="tab-pane fade" id="full-pdf" role="tabpanel">
+            <div class="pdf-container">
+              <iframe id="pdfFrame" class="pdf-viewer" style="width:100%; height:40vh;" src="about:blank"></iframe>
+            </div>
+          </div>
+          
+          <!-- Header Region -->
+          <div class="tab-pane fade" id="header-region" role="tabpanel">
+            <div class="region-container">
+              <img id="headerImage" class="region-image" src="" alt="Header region">
+              <div id="headerRegionStatus"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Enhanced Provider Editor -->
+      <div class="main-panel">
+        <div class="card-header d-flex justify-content-between align-items-center py-1 px-2">
+          <h5 class="mb-0 fs-6">Provider Information</h5>
+          <button id="saveProviderButton" class="btn btn-primary btn-sm">Save Changes</button>
+        </div>
+        
+        <!-- Provider Editor Content -->
+        <div class="card-body p-2" style="height: calc(59vh - 100px); overflow-y: auto;">
+          <!-- Provider Info Alert (shown when no provider selected) -->
+          <div id="providerInfo" class="p-1">
+            <div class="alert alert-info py-1 px-2 mb-1">Select a provider from the left panel to edit information</div>
+          </div>
+          
+          <!-- Enhanced Provider Form with better section organization -->
+          <div id="providerEditor" class="d-none">
+            <!-- Quick nav bar will be added here by JS -->
+            <form id="providerForm">
+              <input type="hidden" id="primaryKey">
+              
+              <!-- Basic Provider Information -->
+              <div class="field-group p-1 mb-2" id="billingInfo">
+                <div class="field-group-header py-1 mb-1">
+                  <i class="bi bi-info-circle"></i> Business Information
+                </div>
+                <div class="row g-1 mb-1">
+                  <div class="col-md-6">
+                    <label for="dbaName" class="form-label mb-0 required-field">Business Name (DBA)</label>
+                    <input type="text" class="form-control form-control-sm" id="dbaName">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="billingName" class="form-label mb-0 required-field">Billing Name</label>
+                    <input type="text" class="form-control form-control-sm" id="billingName">
+                  </div>
+                </div>
+              </div>
+              
+              <!-- TIN/NPI Information - Emphasize this section -->
+              <div class="field-group p-1 mb-2" id="tinNpiInfo">
+                <div class="field-group-header py-1 mb-1">
+                  <i class="bi bi-card-heading"></i> Tax ID & NPI
+                </div>
+                <div class="tin-npi-container">
+                  <div class="row g-1 mb-1">
+                    <div class="col-md-6">
+                      <label for="tin" class="form-label mb-0 required-field">TIN</label>
+                      <input type="text" class="form-control form-control-sm" id="tin" placeholder="XX-XXXXXXX">
+                      <small class="text-muted">9-digit Tax ID Number</small>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="npi" class="form-label mb-0 required-field">NPI</label>
+                      <input type="text" class="form-control form-control-sm" id="npi" placeholder="XXXXXXXXXX">
+                      <small class="text-muted">10-digit National Provider ID</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Billing Address -->
+              <div class="field-group p-1 mb-2">
+                <div class="field-group-header py-1 mb-1">
+                  <i class="bi bi-geo-alt"></i> Billing Address
+                </div>
+                <div class="row g-1 mb-1">
+                  <div class="col-12">
+                    <label for="billingAddress1" class="form-label mb-0 required-field">Address Line 1</label>
+                    <input type="text" class="form-control form-control-sm" id="billingAddress1">
+                  </div>
+                </div>
+                <div class="row g-1 mb-1">
+                  <div class="col-12">
+                    <label for="billingAddress2" class="form-label mb-0">Address Line 2</label>
+                    <input type="text" class="form-control form-control-sm" id="billingAddress2">
+                  </div>
+                </div>
+                <div class="row g-1 mb-1">
+                  <div class="col-md-5">
+                    <label for="billingCity" class="form-label mb-0 required-field">City</label>
+                    <input type="text" class="form-control form-control-sm" id="billingCity">
+                  </div>
+                  <div class="col-md-3">
+                    <label for="billingState" class="form-label mb-0 required-field">State</label>
+                    <input type="text" class="form-control form-control-sm" id="billingState" maxlength="2">
+                  </div>
+                  <div class="col-md-4">
+                    <label for="billingZip" class="form-label mb-0 required-field">ZIP</label>
+                    <input type="text" class="form-control form-control-sm" id="billingZip" maxlength="10">
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Provider Status with more visual prominence -->
+              <div class="field-group p-1 mb-2" id="networkInfo">
+                <div class="field-group-header py-1 mb-1">
+                  <i class="bi bi-shield-check"></i> Provider Status
+                </div>
+                <div class="row g-1 mb-1">
+                  <div class="col-md-4">
+                    <label for="providerType" class="form-label mb-0 required-field">Provider Type</label>
+                    <select class="form-select form-select-sm" id="providerType">
+                      <option value="">Select type...</option>
+                      <option value="Imaging">Imaging</option>
+                      <option value="EMG">EMG</option>
+                      <option value="Facility">Facility</option>
+                      <option value="Physician">Physician</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="providerStatus" class="form-label mb-0 required-field">Provider Status</label>
+                    <select class="form-select form-select-sm" id="providerStatus">
+                      <option value="">Select status...</option>
+                      <option value="Contract Complete">Contract Complete</option>
+                      <option value="Research Phase">Research Phase</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="providerNetwork" class="form-label mb-0 required-field">Network Status</label>
+                    <select class="form-select form-select-sm" id="providerNetwork">
+                      <option value="">Select network...</option>
+                      <option value="In Network">In Network</option>
+                      <option value="Out of Network">Out of Network</option>
+                      <option value="Pending">Pending</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
-
-<div class="container">
-    <div class="file-panel">
-        <!-- File panel content -->
-    </div>
-    <div class="pdf-viewer">
-        <!-- PDF viewer content -->
-    </div>
+  </div>
 </div>
 
 <!-- Confirmation Modal -->
 <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header py-1 px-2">
-                <h5 class="modal-title" id="confirmationModalLabel">Confirm Update</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body py-1 px-2" id="confirmationModalBody">
-                Are you sure you want to update this provider?
-                <div id="confirmationDetails" class="mt-1"></div>
-            </div>
-            <div class="modal-footer py-1 px-2">
-                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-sm btn-primary" id="confirmUpdateButton">Update Provider</button>
-            </div>
-        </div>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header py-1 px-2">
+        <h5 class="modal-title" id="confirmationModalLabel">Confirm Update</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-1 px-2" id="confirmationModalBody">
+        Are you sure you want to update this provider?
+        <div id="confirmationDetails" class="mt-1"></div>
+      </div>
+      <div class="modal-footer py-1 px-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-sm btn-primary" id="confirmUpdateButton">Update Provider</button>
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <!-- Include JavaScript files in correct dependency order -->
+<script src="{{ url_for('static', filename='js/provider_corrections/pdf_viewer.js') }}"></script>
 <script src="{{ url_for('static', filename='js/provider_corrections/provider_list.js') }}"></script>
 <script src="{{ url_for('static', filename='js/provider_corrections/provider_editor.js') }}"></script>
 <script src="{{ url_for('static', filename='js/provider_corrections/main.js') }}"></script>
+
+<!-- Load our enhanced PDF and layout fixes -->
+<script>
+// Add the functionality to scroll to sections
+window.scrollToSection = function(sectionId) {
+  const section = document.getElementById(sectionId);
+  if (section) {
+    section.scrollIntoView({ behavior: 'smooth' });
+    // Add a brief highlight effect
+    section.classList.add('highlight-section');
+    setTimeout(() => {
+      section.classList.remove('highlight-section');
+    }, 1500);
+  }
+};
+
+// Initialize the PDF viewer with fixes
+document.addEventListener('DOMContentLoaded', function() {
+  // Ensure footer tab is selected by default
+  setTimeout(() => {
+    const footerTab = document.getElementById('footer-tab');
+    if (footerTab && !footerTab.classList.contains('active')) {
+      footerTab.click();
+    }
+  }, 300);
+  
+  // Add quick navigation bar if not already present
+  const providerEditor = document.getElementById('providerEditor');
+  if (providerEditor && !document.querySelector('.quick-nav-bar')) {
+    const quickNavBar = document.createElement('div');
+    quickNavBar.className = 'quick-nav-bar mb-2';
+    quickNavBar.innerHTML = `
+      <div class="btn-group btn-group-sm">
+        <button class="btn btn-outline-primary" onclick="scrollToSection('billingInfo')">
+          <i class="bi bi-building"></i> Business Info
+        </button>
+        <button class="btn btn-outline-primary" onclick="scrollToSection('tinNpiInfo')">
+          <i class="bi bi-card-heading"></i> TIN/NPI
+        </button>
+        <button class="btn btn-outline-primary" onclick="scrollToSection('networkInfo')">
+          <i class="bi bi-shield-check"></i> Network Status
+        </button>
+      </div>
+    `;
+    providerEditor.insertBefore(quickNavBar, providerEditor.firstChild);
+  }
+});
+</script>
 {% endblock %}

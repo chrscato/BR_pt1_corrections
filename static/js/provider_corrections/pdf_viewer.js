@@ -1,443 +1,307 @@
 /**
- * Enhanced PDF Region Viewer for Provider Corrections tool
- * - Fixes the header and footer region loading issues
- * - Fixes PDF file path handling issues
- * - Reorganizes tabs to footer, full PDF, header order
+ * Fixed PDF Viewer for Provider Corrections
+ * This script ensures the PDF regions (especially footer) are properly displayed
  */
 
-// Store the selected filename globally
-let selectedFilename = null;
+// Global variables to track state
+let currentFilename = null;
+let pdfViewerInitialized = false;
 
-document.addEventListener("DOMContentLoaded", function() {
-    console.log("Enhanced PDF viewer initialized");
-    setupTabEventHandlers();
+// Initialize the PDF viewer when the document is ready
+document.addEventListener('DOMContentLoaded', function() {
+  initPDFViewer();
 });
 
 /**
- * Set up better event handlers for tab switching
+ * Initialize the PDF viewer
  */
-function setupTabEventHandlers() {
-    // Add click event listeners directly to the tabs
+function initPDFViewer() {
+  if (pdfViewerInitialized) return;
+  
+  console.log('Initializing PDF Viewer');
+  
+  // Set up tab event listeners
+  setupTabListeners();
+  
+  // Make footer tab active by default
+  setTimeout(() => {
     const footerTab = document.getElementById('footer-tab');
-    const fullTab = document.getElementById('full-tab');
-    const headerTab = document.getElementById('header-tab');
-    
-    if (footerTab) {
-        footerTab.addEventListener('click', function() {
-            if (selectedFilename) {
-                loadFooterRegion(selectedFilename);
-            }
-        });
+    if (footerTab && !footerTab.classList.contains('active')) {
+      footerTab.click();
     }
-    
-    if (headerTab) {
-        headerTab.addEventListener('click', function() {
-            if (selectedFilename) {
-                loadHeaderRegion(selectedFilename);
-            }
-        });
-    }
+  }, 300);
+  
+  pdfViewerInitialized = true;
 }
 
 /**
- * Fix the filename format for API requests
- * @param {string} filename - The original filename
- * @returns {string} - The properly formatted filename for API requests
+ * Set up tab listeners
  */
-function formatFilenameForAPI(filename) {
-    // Extract just the filename without path
-    let formattedName = filename;
-    
-    // Remove any path components if present
-    if (formattedName.includes('/') || formattedName.includes('\\')) {
-        const parts = formattedName.split(/[\/\\]/);
-        formattedName = parts[parts.length - 1];
-    }
-    
-    // Ensure it has a proper extension
-    if (!formattedName.toLowerCase().endsWith('.json') && 
-        !formattedName.toLowerCase().endsWith('.pdf')) {
-        formattedName += '.json'; // Add JSON extension as default
-    }
-    
-    console.log(`Formatted filename for API: ${formattedName}`);
-    return formattedName;
+function setupTabListeners() {
+  const footerTab = document.getElementById('footer-tab');
+  const fullTab = document.getElementById('full-tab');
+  const headerTab = document.getElementById('header-tab');
+  
+  if (footerTab) {
+    footerTab.addEventListener('click', function() {
+      loadRegion('footer');
+    });
+  }
+  
+  if (headerTab) {
+    headerTab.addEventListener('click', function() {
+      loadRegion('header');
+    });
+  }
+  
+  if (fullTab) {
+    fullTab.addEventListener('click', function() {
+      loadFullPDF();
+    });
+  }
 }
 
 /**
- * Load a specific PDF file and regions
- * @param {string} filename - The filename to load
+ * Set the current filename and load appropriate content
  */
-function loadPDFFile(filename) {
-    console.log(`Loading PDF for file: ${filename}`);
-    selectedFilename = filename;
-    
-    // Format the filename for API requests
-    const apiFilename = formatFilenameForAPI(filename);
-    
-    // Set the selected filename display
-    const filenameDisplay = document.getElementById('selectedFileName');
-    if (filenameDisplay) {
-        filenameDisplay.textContent = filename;
+function setCurrentFile(filename) {
+  currentFilename = filename;
+  console.log(`Setting current file to: ${filename}`);
+  
+  // Update the filename display
+  const filenameDisplay = document.getElementById('selectedFileName');
+  if (filenameDisplay) {
+    filenameDisplay.textContent = filename;
+  }
+  
+  // Load the active tab content
+  const activeTab = document.querySelector('#regionTabs .nav-link.active');
+  if (activeTab) {
+    if (activeTab.id === 'footer-tab') {
+      loadRegion('footer');
+    } else if (activeTab.id === 'header-tab') {
+      loadRegion('header');
+    } else {
+      loadFullPDF();
     }
-    
-    // First load the footer (since it's now the active tab)
-    loadFooterRegion(apiFilename);
-    
-    // Set up the full PDF view - try multiple PDF path formats
-    loadFullPDF(apiFilename);
-    
-    // Also pre-load the header region
-    loadHeaderRegion(apiFilename);
+  } else {
+    // Default to footer if no tab is active
+    loadRegion('footer');
+  }
 }
 
 /**
- * Try different formats to load the full PDF
- * @param {string} filename - The formatted filename
+ * Load a PDF region (footer or header)
  */
-function loadFullPDF(filename) {
-    const pdfFrame = document.getElementById('pdfFrame');
-    if (!pdfFrame) return;
-    
-    // Try with the direct filename
-    let pdfPath = `/provider_corrections/api/pdf/${filename}`;
-    
-    // If filename ends with .json, try the PDF version
-    if (filename.toLowerCase().endsWith('.json')) {
-        // Convert .json to .pdf
-        pdfPath = `/provider_corrections/api/pdf/${filename.slice(0, -5)}.pdf`;
-    }
-    
-    console.log(`Loading full PDF from: ${pdfPath}`);
-    pdfFrame.src = pdfPath;
-    
-    // Add error handler to try alternative paths if the first one fails
-    pdfFrame.onerror = function() {
-        console.log("Initial PDF load failed, trying alternative paths");
-        tryAlternativePDFPaths(filename, pdfFrame);
-    };
+function loadRegion(region) {
+  if (!currentFilename || currentFilename === 'No file selected') {
+    console.log('No file selected, cannot load region');
+    return;
+  }
+  
+  console.log(`Loading ${region} region for: ${currentFilename}`);
+  
+  // Get the image element
+  const imgId = `${region}Image`;
+  const imgElement = document.getElementById(imgId);
+  if (!imgElement) {
+    console.error(`Image element not found: ${imgId}`);
+    return;
+  }
+  
+  // Show loading state
+  imgElement.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MCA1MCIgd2lkdGg9IjUwcHgiIGhlaWdodD0iNTBweCI+CiAgPGNpcmNsZSBjeD0iMjUiIGN5PSIyNSIgcj0iMjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwNzJmZiIgc3Ryb2tlLXdpZHRoPSI1Ij4KICAgIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiBkdXI9IjFzIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIgZnJvbT0iMCAyNSAyNSIgdG89IjM2MCAyNSAyNSIvPgogIDwvY2lyY2xlPgo8L3N2Zz4=";
+  
+  // Clear any previous error messages
+  const statusDivId = `${region}RegionStatus`;
+  const statusDiv = document.getElementById(statusDivId);
+  if (statusDiv) {
+    statusDiv.innerHTML = '';
+  }
+  
+  // Try to load the region using multiple paths
+  tryMultipleRegionAPIPaths(currentFilename, region, imgElement, statusDiv);
 }
 
 /**
- * Try alternative PDF paths if the main one fails
- * @param {string} filename - The formatted filename
- * @param {HTMLIFrameElement} pdfFrame - The PDF iframe element
+ * Try multiple API paths to load a PDF region
  */
-async function tryAlternativePDFPaths(filename, pdfFrame) {
-    // Try alternative paths from different routes
-    const alternativePaths = [
-        // Try without extension
-        `/provider_corrections/api/pdf/${filename.split('.')[0]}`,
-        // Try with PDF extension
-        `/provider_corrections/api/pdf/${filename.split('.')[0]}.pdf`,
-        // Try corrections route
-        `/corrections/api/pdf/${filename}`,
-        // Try corrections route with PDF extension
-        `/corrections/api/pdf/${filename.split('.')[0]}.pdf`,
-        // Try unmapped route
-        `/unmapped/api/pdf/${filename}`,
-        // Try unmapped route with PDF extension
-        `/unmapped/api/pdf/${filename.split('.')[0]}.pdf`,
-        // Try escalations route
-        `/escalations/api/pdf/${filename}`,
-        // Try escalations route with PDF extension
-        `/escalations/api/pdf/${filename.split('.')[0]}.pdf`
-    ];
-    
-    console.log("Trying alternative PDF paths...");
-    
-    // Try each path until one works
-    for (const path of alternativePaths) {
-        console.log(`Trying PDF path: ${path}`);
+async function tryMultipleRegionAPIPaths(filename, region, imgElement, statusDiv) {
+  // Clean filename (remove path components if any)
+  const cleanFilename = filename.split('\\').pop().split('/').pop();
+  
+  // Generate variations of the filename
+  const filenameVariations = [
+    cleanFilename,
+    cleanFilename.replace('.json', ''),
+    cleanFilename.replace('.pdf', '') + '.json',
+    cleanFilename + '.json',
+    cleanFilename + '.pdf'
+  ];
+  
+  // Different API routes to try for PDF region extraction
+  const apiRoutes = [
+    '/provider_corrections/api/pdf_region/',
+    '/unmapped/api/pdf_region/',
+    '/corrections/api/pdf_region/',
+    '/escalations/api/pdf_region/'
+  ];
+  
+  let success = false;
+
+  // Try each route with each filename variation
+  for (const route of apiRoutes) {
+    for (const fileVar of filenameVariations) {
+      try {
+        const url = `${route}${fileVar}/${region}`;
+        console.log(`Trying to load ${region} from: ${url}`);
         
-        try {
-            // Check if the path is accessible
-            const response = await fetch(path, { method: 'HEAD' });
-            if (response.ok) {
-                console.log(`Found working PDF path: ${path}`);
-                pdfFrame.src = path;
-                return;
-            }
-        } catch (error) {
-            console.log(`Path ${path} failed: ${error.message}`);
-        }
-    }
-    
-    // If all paths fail, show an error message
-    console.error("All PDF paths failed");
-    const fullTab = document.getElementById('full-pdf');
-    if (fullTab) {
-        fullTab.innerHTML = `
-            <div class="alert alert-danger m-3">
-                <h5>PDF Not Found</h5>
-                <p>The PDF for this file could not be located. This could be due to:</p>
-                <ul>
-                    <li>The PDF file doesn't exist in the system</li>
-                    <li>The filename format is not recognized</li>
-                    <li>There may be a path configuration issue</li>
-                </ul>
-                <p>Please check the file paths in your configuration.</p>
-            </div>
-        `;
-    }
-}
-
-/**
- * Load the footer region from a PDF
- * @param {string} filename - The filename to load
- */
-async function loadFooterRegion(filename) {
-    try {
-        console.log(`Loading footer region for: ${filename}`);
-        const footerImage = document.getElementById('footerImage');
-        const statusDiv = document.getElementById('footerRegionStatus');
-        
-        if (!footerImage) {
-            console.error("Footer image element not found");
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.image) {
+            console.log(`Successfully loaded ${region} from: ${url}`);
+            imgElement.src = data.image;
+            success = true;
             return;
+          }
         }
-        
-        // Set a loading spinner
-        footerImage.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MCA1MCIgd2lkdGg9IjUwcHgiIGhlaWdodD0iNTBweCI+CiAgPGNpcmNsZSBjeD0iMjUiIGN5PSIyNSIgcj0iMjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwNzJmZiIgc3Ryb2tlLXdpZHRoPSI1Ij4KICAgIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiBkdXI9IjFzIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIgZnJvbT0iMCAyNSAyNSIgdG89IjM2MCAyNSAyNSIvPgogIDwvY2lyY2xlPgo8L3N2Zz4=";
-        if (statusDiv) {
-            statusDiv.innerHTML = '<div class="alert alert-info">Loading footer region...</div>';
-        }
-        
-        // First try with provider_corrections route
-        const response = await fetch(`/provider_corrections/api/pdf_region/${filename}/footer`);
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.image) {
-                footerImage.src = data.image;
-                console.log("Footer image loaded successfully");
-                if (statusDiv) {
-                    statusDiv.innerHTML = '';
-                }
-                return;
-            }
-        }
-        
-        // If that fails, try unmapped route
-        const unmappedResponse = await fetch(`/unmapped/api/pdf_region/${filename}/footer`);
-        
-        if (unmappedResponse.ok) {
-            const data = await unmappedResponse.json();
-            if (data.image) {
-                footerImage.src = data.image;
-                console.log("Footer image loaded successfully from unmapped route");
-                if (statusDiv) {
-                    statusDiv.innerHTML = '';
-                }
-                return;
-            }
-        }
-        
-        // If both fail, throw an error
-        throw new Error("No image data returned for footer");
-    } catch (error) {
-        console.error("Error loading footer:", error);
-        const footerImage = document.getElementById('footerImage');
-        const statusDiv = document.getElementById('footerRegionStatus');
-        
-        if (footerImage) {
-            footerImage.src = '/static/img/error.png';
-        }
-        
-        if (statusDiv) {
-            statusDiv.innerHTML = `
-                <div class="alert alert-warning">
-                    <p>Could not load footer region. Trying alternative methods...</p>
-                </div>
-            `;
-            
-            // Try to load via a different route
-            tryAlternativeRegionLoad(filename, 'footer', footerImage, statusDiv);
-        }
+      } catch (error) {
+        console.log(`Error with ${route} and ${fileVar}: ${error.message}`);
+      }
     }
+  }
+  
+  // If all attempts fail, display error
+  if (!success) {
+    imgElement.src = '/static/img/error.png';
+    console.error(`Failed to load ${region} region for ${filename}`);
+    
+    // Show error message
+    if (statusDiv) {
+      statusDiv.innerHTML = `
+        <div class="alert alert-warning mt-2">
+          <p>Could not load ${region} region. Try viewing the full PDF instead.</p>
+          <button class="btn btn-sm btn-primary mt-1" onclick="document.getElementById('full-tab').click()">
+            View Full PDF
+          </button>
+        </div>
+      `;
+    }
+  }
 }
 
 /**
- * Load the header region from a PDF
- * @param {string} filename - The filename to load
+ * Load the full PDF
  */
-async function loadHeaderRegion(filename) {
-    try {
-        console.log(`Loading header region for: ${filename}`);
-        const headerImage = document.getElementById('headerImage');
-        const statusDiv = document.getElementById('headerRegionStatus');
-        
-        if (!headerImage) {
-            console.error("Header image element not found");
-            return;
-        }
-        
-        // Set a loading spinner
-        headerImage.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MCA1MCIgd2lkdGg9IjUwcHgiIGhlaWdodD0iNTBweCI+CiAgPGNpcmNsZSBjeD0iMjUiIGN5PSIyNSIgcj0iMjAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwNzJmZiIgc3Ryb2tlLXdpZHRoPSI1Ij4KICAgIDxhbmltYXRlVHJhbnNmb3JtIGF0dHJpYnV0ZU5hbWU9InRyYW5zZm9ybSIgdHlwZT0icm90YXRlIiByZXBlYXRDb3VudD0iaW5kZWZpbml0ZSIgZHVyPSIxcyIgZnJvbT0iMCAyNSAyNSIgdG89IjM2MCAyNSAyNSIvPgogIDwvY2lyY2xlPgo8L3N2Zz4=";
-        if (statusDiv) {
-            statusDiv.innerHTML = '<div class="alert alert-info">Loading header region...</div>';
-        }
-        
-        // First try with provider_corrections route
-        const response = await fetch(`/provider_corrections/api/pdf_region/${filename}/header`);
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.image) {
-                headerImage.src = data.image;
-                console.log("Header image loaded successfully");
-                if (statusDiv) {
-                    statusDiv.innerHTML = '';
-                }
-                return;
-            }
-        }
-        
-        // If that fails, try unmapped route
-        const unmappedResponse = await fetch(`/unmapped/api/pdf_region/${filename}/header`);
-        
-        if (unmappedResponse.ok) {
-            const data = await unmappedResponse.json();
-            if (data.image) {
-                headerImage.src = data.image;
-                console.log("Header image loaded successfully from unmapped route");
-                if (statusDiv) {
-                    statusDiv.innerHTML = '';
-                }
-                return;
-            }
-        }
-        
-        // If both fail, throw an error
-        throw new Error("No image data returned for header");
-    } catch (error) {
-        console.error("Error loading header:", error);
-        const headerImage = document.getElementById('headerImage');
-        const statusDiv = document.getElementById('headerRegionStatus');
-        
-        if (headerImage) {
-            headerImage.src = '/static/img/error.png';
-        }
-        
-        if (statusDiv) {
-            statusDiv.innerHTML = `
-                <div class="alert alert-warning">
-                    <p>Could not load header region. Trying alternative methods...</p>
-                </div>
-            `;
-            
-            // Try to load via a different route
-            tryAlternativeRegionLoad(filename, 'header', headerImage, statusDiv);
-        }
-    }
+function loadFullPDF() {
+  if (!currentFilename || currentFilename === 'No file selected') {
+    console.log('No file selected, cannot load PDF');
+    return;
+  }
+  
+  console.log(`Loading full PDF for: ${currentFilename}`);
+  
+  const pdfFrame = document.getElementById('pdfFrame');
+  if (!pdfFrame) {
+    console.error('PDF frame element not found');
+    return;
+  }
+  
+  // Clear any existing PDFs and show loading state
+  pdfFrame.src = "about:blank";
+  
+  // Remove any previous error messages
+  const container = pdfFrame.parentElement;
+  if (container) {
+    const existingErrors = container.querySelectorAll('.alert');
+    existingErrors.forEach(error => error.remove());
+  }
+  
+  // Try to load the PDF using multiple paths
+  tryMultiplePDFPaths(currentFilename, pdfFrame);
 }
 
 /**
- * Try an alternative method to load PDF regions
- * First try with corrections route, then with escalations route
- * @param {string} filename - The filename to load
- * @param {string} region - The region to load ('header' or 'footer')
- * @param {HTMLImageElement} imgElement - The image element to update
- * @param {HTMLElement} statusDiv - The status div to update
+ * Try multiple paths to load the full PDF
  */
-async function tryAlternativeRegionLoad(filename, region, imgElement, statusDiv) {
-    try {
-        // Try corrections route first
-        console.log(`Trying alternative route for ${region}: corrections`);
-        if (statusDiv) {
-            statusDiv.innerHTML = `<div class="alert alert-info">Trying alternative method 1...</div>`;
-        }
+async function tryMultiplePDFPaths(filename, pdfFrame) {
+  // Clean filename
+  const cleanFilename = filename.split('\\').pop().split('/').pop();
+  
+  // Generate filename variations
+  const filenameVariations = [
+    cleanFilename,
+    cleanFilename.replace('.json', '.pdf'),
+    cleanFilename.replace('.pdf', '.pdf'),
+    cleanFilename + '.pdf'
+  ];
+  
+  // Different API routes to try
+  const apiRoutes = [
+    '/provider_corrections/api/pdf/',
+    '/unmapped/api/pdf/',
+    '/corrections/api/pdf/',
+    '/escalations/api/pdf/'
+  ];
+  
+  let success = false;
+  
+  // Try each route with each filename variation
+  for (const route of apiRoutes) {
+    for (const fileVar of filenameVariations) {
+      try {
+        const url = `${route}${fileVar}`;
+        console.log(`Trying to load PDF from: ${url}`);
         
-        const response = await fetch(`/corrections/api/pdf_region/${filename}/${region}`);
-        
+        // Test if the URL is accessible
+        const response = await fetch(url, { method: 'HEAD' });
         if (response.ok) {
-            const data = await response.json();
-            if (data.image) {
-                imgElement.src = data.image;
-                console.log(`${region} loaded via corrections route`);
-                if (statusDiv) {
-                    statusDiv.innerHTML = `<div class="alert alert-success">Successfully loaded via alternative method</div>`;
-                }
-                return;
-            }
+          console.log(`Successfully found PDF at: ${url}`);
+          pdfFrame.src = url;
+          success = true;
+          return;
         }
-        
-        // If that fails, try escalations route
-        console.log(`Trying alternative route for ${region}: escalations`);
-        if (statusDiv) {
-            statusDiv.innerHTML = `<div class="alert alert-info">Trying alternative method 2...</div>`;
-        }
-        
-        const response2 = await fetch(`/escalations/api/pdf_region/${filename}/${region}`);
-        
-        if (response2.ok) {
-            const data = await response2.json();
-            if (data.image) {
-                imgElement.src = data.image;
-                console.log(`${region} loaded via escalations route`);
-                if (statusDiv) {
-                    statusDiv.innerHTML = `<div class="alert alert-success">Successfully loaded via alternative method</div>`;
-                }
-                return;
-            }
-        }
-        
-        // Try with file basename only (without extension)
-        const baseName = filename.split('.')[0];
-        console.log(`Trying with base filename: ${baseName}`);
-        if (statusDiv) {
-            statusDiv.innerHTML = `<div class="alert alert-info">Trying with simplified filename...</div>`;
-        }
-        
-        const response3 = await fetch(`/unmapped/api/pdf_region/${baseName}/${region}`);
-        
-        if (response3.ok) {
-            const data = await response3.json();
-            if (data.image) {
-                imgElement.src = data.image;
-                console.log(`${region} loaded via unmapped route with base filename`);
-                if (statusDiv) {
-                    statusDiv.innerHTML = `<div class="alert alert-success">Successfully loaded via alternative method</div>`;
-                }
-                return;
-            }
-        }
-        
-        // If all fails, display a full PDF viewer button
-        if (statusDiv) {
-            statusDiv.innerHTML = `
-                <div class="alert alert-danger">
-                    <p>All methods to load ${region} region failed.</p>
-                    <p>Please check the full PDF view instead.</p>
-                    <button class="btn btn-primary btn-sm mt-2" onclick="document.getElementById('full-tab').click()">
-                        View Full PDF
-                    </button>
-                </div>
-            `;
-        }
-    } catch (error) {
-        console.error(`Error in alternative loading for ${region}:`, error);
-        if (statusDiv) {
-            statusDiv.innerHTML = `
-                <div class="alert alert-danger">
-                    <p>Error loading ${region} region: ${error.message}</p>
-                    <p>Please check the full PDF view instead.</p>
-                    <button class="btn btn-primary btn-sm mt-2" onclick="document.getElementById('full-tab').click()">
-                        View Full PDF
-                    </button>
-                </div>
-            `;
-        }
+      } catch (error) {
+        console.log(`Error with ${route} and ${fileVar}: ${error.message}`);
+      }
     }
+  }
+  
+  // If all attempts fail, display error
+  if (!success) {
+    console.error(`Failed to load PDF for ${filename}`);
+    
+    // Show error message in the PDF frame's parent
+    const container = pdfFrame.parentElement;
+    if (container) {
+      const errorMsg = document.createElement('div');
+      errorMsg.className = 'alert alert-danger m-3';
+      errorMsg.innerHTML = `
+        <h5>PDF Not Found</h5>
+        <p>The PDF file could not be located. Possible reasons:</p>
+        <ul>
+          <li>The PDF file doesn't exist in the system</li>
+          <li>The filename format is not recognized</li>
+          <li>There may be a configuration issue with the file paths</li>
+        </ul>
+      `;
+      container.appendChild(errorMsg);
+    }
+  }
 }
 
-// Override the viewFile function to use our enhanced loader
-window.viewFile = function(fileName) {
-    console.log(`Viewing file: ${fileName}`);
-    loadPDFFile(fileName);
-};
+/**
+ * Helper function to load a specific provider's PDF
+ */
+function viewProviderPDF(provider) {
+  if (provider && provider.file_name) {
+    setCurrentFile(provider.file_name);
+  }
+}
 
-// Export functions to global scope to make them available to other modules
-window.loadPDFFile = loadPDFFile;
-window.loadHeaderRegion = loadHeaderRegion;
-window.loadFooterRegion = loadFooterRegion;
+// Expose global functions
+window.setCurrentFile = setCurrentFile;
+window.loadRegion = loadRegion;
+window.loadFullPDF = loadFullPDF;
+window.viewProviderPDF = viewProviderPDF;

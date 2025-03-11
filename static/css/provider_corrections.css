@@ -1,195 +1,278 @@
 /**
- * Specific styles for the Provider Corrections tool
- * Zero padding version with completely minimal spacing
+ * Enhanced CSS for Provider Corrections
+ * Focus on making the PDF footer easily accessible and improving the form layout
  */
 
-/* Reset margins and paddings */
+/* Reset margins and paddings for tighter UI */
 .container-fluid {
     padding: 0 !important;
-}
-
-/* Ensure no gutters between components */
-.row {
+  }
+  
+  /* Remove gutters between panels */
+  .row {
     margin: 0 !important;
-}
-
-/* Make card borders less prominent */
-.card {
-    border: none !important;
-    border-radius: 0 !important;
-    margin-bottom: 1px !important;
-}
-
-.card-header {
-    padding: 2px 5px !important;
-    background-color: #f0f0f0 !important;
-    border-bottom: 1px solid #ddd !important;
-}
-
-.card-body {
-    padding: 0 !important;
-}
-
-/* PDF viewer styling */
-.pdf-viewer-panel {
-    height: calc(100vh - 110px);
-    overflow: hidden;
-}
-
-.pdf-viewer {
-    width: 100%;
-    height: 100%;
-    border: none !important;
-}
-
-/* Region image styling */
-.region-image {
-    max-width: 100%;
-    max-height: calc(100vh - 110px) !important;
-    object-fit: contain;
-    display: block;
-    margin: 0 auto !important;
-}
-
-/* Remove list group item padding */
-.list-group-item {
-    padding: 2px 5px !important;
-    border-radius: 0 !important;
-}
-
-/* Provider list styling */
-.provider-list {
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-.provider-item {
-    padding: 3px 5px !important;
-    border-bottom: 1px solid #ddd !important;
-    border-left: 3px solid transparent;
-}
-
-.provider-item:hover {
-    background-color: rgba(13, 110, 253, 0.05);
-}
-
-.provider-item.active {
-    border-left-color: #0d6efd;
-    background-color: rgba(13, 110, 253, 0.1);
-}
-
-.provider-item.missing-critical {
-    border-left-color: #dc3545;
-}
-
-.provider-item.missing-some {
-    border-left-color: #ffc107;
-}
-
-.provider-item.missing-few {
-    border-left-color: #6c757d;
-}
-
-/* Form controls with minimal padding */
-.form-control, .form-select {
-    padding: 2px 4px !important;
-    height: auto !important;
-    min-height: 0 !important;
-}
-
-.form-label {
-    margin-bottom: 1px !important;
-    font-size: 0.8rem !important;
-}
-
-/* Field groups with minimal spacing */
-.field-group {
-    background-color: #f8f8f8;
-    border-radius: 0;
-    padding: 2px 5px !important;
-    margin-bottom: 2px !important;
-}
-
-.field-group-header {
-    margin-bottom: 2px !important;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 2px !important;
-    font-weight: 500;
-    font-size: 0.85rem !important;
-}
-
-/* Required field indicator */
-.required-field::after {
-    content: "*";
-    color: #dc3545;
-    margin-left: 1px;
-}
-
-/* Reduce alert padding */
-.alert {
-    padding: 2px 5px !important;
-    margin: 1px 0 !important;
-    border-radius: 0 !important;
-}
-
-/* PDF viewer styling */
-.pdf-container {
-    width: 100%;
-    height: 400px;
-    position: relative;
-}
-
-.pdf-viewer {
-    width: 100%;
-    height: 100%;
+  }
+  
+  /* Main panel styling for visual prominence */
+  .main-panel {
     border: 1px solid #dee2e6;
     border-radius: 4px;
-}
-
-/* Field groups */
-.field-group {
-    background-color: #f8f9fa;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    background-color: #fff;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  
+  /* PDF viewer panel styling */
+  .pdf-viewer-panel {
+    border: none !important;
+    height: calc(40vh - 20px);
+    overflow: hidden;
+  }
+  
+  /* Ensure PDF viewer takes full space */
+  .pdf-viewer {
+    width: 100%;
+    height: 100%;
+    border: none !important;
+    display: block;
+  }
+  
+  /* Footer region should be highlighted */
+  #footer-region {
+    border-left: 3px solid #0d6efd;
+  }
+  
+  /* Enhanced tab styling */
+  .nav-pills .nav-link {
+    padding: 0.25rem 0.5rem;
+    margin-right: 3px;
     border-radius: 4px;
-    padding: 15px;
-    margin-bottom: 15px;
-}
-
-.field-group-header {
-    margin-bottom: 15px;
-    border-bottom: 1px solid #dee2e6;
-    padding-bottom: 5px;
-    font-weight: 500;
-}
-
-.nav-pills .nav-link.active {
+    font-size: 0.85rem;
+  }
+  
+  .nav-pills .nav-link.active {
     background-color: #0d6efd;
     color: white;
-}
-
-/* Tab content takes full height */
-.tab-content,
-.tab-pane {
-    height: 100% !important;
-}
-
-/* Dark mode support */
-.dark-mode .card-header {
-    background-color: #2b3035 !important;
-    border-color: #495057 !important;
-}
-
-.dark-mode .field-group {
+  }
+  
+  .priority-tab {
+    position: relative;
+  }
+  
+  .priority-tab::after {
+    content: "⭐";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 10px;
+  }
+  
+  /* Region image container */
+  .region-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 200px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  
+  /* Region image styling */
+  .region-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  
+  /* Provider list improvements */
+  .provider-list {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .provider-item {
+    padding: 5px !important;
+    border-bottom: 1px solid #dee2e6 !important;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+  }
+  
+  .provider-item:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+    border-left-color: #0d6efd;
+  }
+  
+  .provider-item.active {
+    background-color: rgba(13, 110, 253, 0.1);
+    border-left-color: #0d6efd;
+  }
+  
+  /* Highlight critical missing fields */
+  .provider-item.missing-critical {
+    border-left-color: #dc3545;
+  }
+  
+  .provider-item.missing-some {
+    border-left-color: #ffc107;
+  }
+  
+  .provider-item.missing-few {
+    border-left-color: #6c757d;
+  }
+  
+  /* Form field styling */
+  .form-control, .form-select {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.875rem !important;
+  }
+  
+  .form-label {
+    margin-bottom: 0.25rem !important;
+    font-size: 0.8rem !important;
+    font-weight: 500;
+  }
+  
+  /* Field group styling */
+  .field-group {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 10px !important;
+    margin-bottom: 10px !important;
+    transition: all 0.3s ease;
+  }
+  
+  .field-group:hover {
+    background-color: #f0f0f0;
+  }
+  
+  /* Highlight the field group when scrolled to */
+  .highlight-section {
+    animation: highlight-pulse 1.5s;
+  }
+  
+  @keyframes highlight-pulse {
+    0% { background-color: #f8f9fa; }
+    50% { background-color: #e2f0ff; }
+    100% { background-color: #f8f9fa; }
+  }
+  
+  .field-group-header {
+    margin-bottom: 10px !important;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 5px !important;
+    font-weight: 500;
+    font-size: 0.9rem !important;
+    color: #0d6efd;
+  }
+  
+  /* Required field indicator */
+  .required-field::after {
+    content: " *";
+    color: #dc3545;
+    font-weight: bold;
+  }
+  
+  /* TIN/NPI container for emphasis */
+  .tin-npi-container {
+    background-color: #e9f2ff;
+    border-radius: 4px;
+    padding: 10px;
+    border-left: 3px solid #0d6efd;
+  }
+  
+  /* Quick navigation bar */
+  .quick-nav-bar {
+    position: sticky;
+    top: 0;
+    background-color: #fff;
+    padding: 5px;
+    z-index: 10;
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 10px;
+  }
+  
+  /* Alert styling */
+  .alert {
+    padding: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  /* Filename display */
+  .filename-display {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #6c757d;
+  }
+  
+  /* Footer tab should stand out */
+  #footer-tab {
+    font-weight: 500;
+  }
+  
+  #footer-tab.active {
+    background-color: #0d6efd;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  /* Dark mode compatibility */
+  .dark-mode .main-panel {
     background-color: #343a40;
-}
-
-.dark-mode .field-group-header {
     border-color: #495057;
-}
-
-.dark-mode .provider-item:hover {
+  }
+  
+  .dark-mode .region-container {
+    background-color: #2b3035;
+    border-color: #495057;
+  }
+  
+  .dark-mode .field-group {
+    background-color: #343a40;
+  }
+  
+  .dark-mode .field-group:hover {
+    background-color: #3a4147;
+  }
+  
+  .dark-mode .highlight-section {
+    animation: dark-highlight-pulse 1.5s;
+  }
+  
+  @keyframes dark-highlight-pulse {
+    0% { background-color: #343a40; }
+    50% { background-color: #2a4365; }
+    100% { background-color: #343a40; }
+  }
+  
+  .dark-mode .field-group-header {
+    border-color: #495057;
+    color: #8bb9fe;
+  }
+  
+  .dark-mode .tin-npi-container {
+    background-color: #2a4365;
+    border-color: #4299e1;
+  }
+  
+  .dark-mode .quick-nav-bar {
+    background-color: #343a40;
+    border-color: #495057;
+  }
+  
+  .dark-mode .provider-item:hover {
     background-color: rgba(255, 255, 255, 0.05);
-}
-
-.dark-mode .provider-item.active {
+  }
+  
+  .dark-mode .provider-item.active {
     background-color: rgba(13, 110, 253, 0.2);
-}
+  }
+  
+  .dark-mode .filename-display {
+    color: #adb5bd;
+  }
