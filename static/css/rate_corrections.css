@@ -200,3 +200,87 @@
 #workflowProgress {
     transition: all 0.3s ease;
 }
+
+
+/**
+ * Styling for the provider categorization status panel
+ */
+
+/* Panel styling */
+#categorizationStatusPanel {
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+  }
+  
+  #categorizationStatusPanel .card-header {
+    padding: 0.5rem 1rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  #categorizationStatusPanel .card-body {
+    padding: 1rem;
+  }
+  
+  /* Progress bars */
+  #categorizationStatusPanel .progress {
+    height: 0.5rem;
+    border-radius: 0.25rem;
+    background-color: #e9ecef;
+  }
+  
+  #categorizationStatusPanel .progress-bar {
+    transition: width 0.6s ease;
+  }
+  
+  /* Filter buttons enhancement */
+  #categorizationStatusPanel .btn-outline-success:hover {
+    background-color: #28a745;
+    color: #fff;
+  }
+  
+  #categorizationStatusPanel .btn-outline-warning:hover {
+    background-color: #ffc107;
+    color: #212529;
+  }
+  
+  #categorizationStatusPanel .btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: #fff;
+  }
+  
+  /* Additional indicator on provider list items */
+  .list-group-item.fully-categorized {
+    border-left: 4px solid #28a745;
+  }
+  
+  .list-group-item.partially-categorized {
+    border-left: 4px solid #ffc107;
+  }
+  
+  .list-group-item.not-categorized {
+    border-left: 4px solid #dc3545;
+  }
+  
+  /* Active filter indicator */
+  .status-filter-active {
+    background-color: rgba(0,0,0,0.05);
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+  }
+  
+  /* Dark mode compatibility */
+  .dark-mode #categorizationStatusPanel .card-header {
+    background-color: #343a40;
+    border-bottom: 1px solid #495057;
+  }
+  
+  .dark-mode #categorizationStatusPanel .progress {
+    background-color: #343a40;
+  }
+  
+  .dark-mode .status-filter-active {
+    background-color: rgba(255,255,255,0.1);
+  }
