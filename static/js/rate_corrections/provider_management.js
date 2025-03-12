@@ -19,6 +19,26 @@ window.RateCorrections = window.RateCorrections || {
 async function loadTINs() {
     try {
         console.log('Loading TINs with rate failures...');
+        
+        // Wait for the DOM to be fully loaded
+        if (document.readyState !== 'complete') {
+            console.log("Document not fully loaded, waiting...");
+            setTimeout(loadTINs, 100);
+            return;
+        }
+        
+        const tinList = document.getElementById('tinList');
+        if (!tinList) {
+            console.error("TIN list element not found. Will retry in 1 second.");
+            // Log some debugging information
+            console.log("Available list elements:", document.querySelectorAll('.list-group'));
+            console.log("Current page:", window.location.href);
+            
+            // Retry after a delay
+            setTimeout(loadTINs, 1000);
+            return;
+        }
+        
         const response = await fetch('/rate_corrections/api/tins');
         
         if (!response.ok) {
@@ -31,12 +51,6 @@ async function loadTINs() {
         if (data.error) {
             console.error('Server reported error:', data.error);
             showAlert(data.error, 'error');
-            return;
-        }
-        
-        const tinList = document.getElementById('tinList');
-        if (!tinList) {
-            console.error("TIN list element not found.");
             return;
         }
         

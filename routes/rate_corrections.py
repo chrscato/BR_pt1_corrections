@@ -1,469 +1,305 @@
 """
-Routes for the Rate Corrections functionality.
+Rate Corrections Routes for Medical Billing Processing
+
+This module handles routes for identifying and correcting rate-related 
+issues in medical billing records.
 """
-from flask import Blueprint, jsonify, request, render_template, send_file
+
 import json
+import logging
+from pathlib import Path
+from typing import Dict, List, Any
+
+from flask import Blueprint, jsonify, request, render_template
 import sqlite3
 import pandas as pd
-import config
-from pathlib import Path
-import logging
-import os
+
+from config import BASE_PATH, DB_PATH
 from services.ppo_updater import PPOUpdater
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Create Blueprint
 rate_corrections_bp = Blueprint('rate_corrections', __name__)
 
-@rate_corrections_bp.route('/')
-def index():
-    """Render the rate corrections interface."""
-    return render_template('rate_corrections/index.html')
-
-
-@rate_corrections_bp.route('/api/missing_codes_summary', methods=['GET'])
-def get_missing_codes_summary():
-    """Get a summary of all CPT codes with missing rates."""
+def get_validation_failures() -> List[Dict[str, Any]]:
+    """
+    Retrieve the most recent validation failures JSON file.
+    
+    Returns:
+        List of validation failure records
+    """
+    validation_logs_path = BASE_PATH / "validation logs"
+    
+    # Find the most recent validation failures file
+    failures_files = list(validation_logs_path.glob('validation_failures_*.json'))
+    
+    if not failures_files:
+        logger.warning("No validation failure files found")
+        return []
+    
+    # Get the most recent file
+    latest_file = max(failures_files, key=lambda f: f.stat().st_mtime)
+    
     try:
-        # Look in the validation logs directory for the latest failures file
-        log_dir = Path(config.VALIDATION_LOGS_PATH)
+        with open(latest_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error reading validation failures file: {e}")
+        return []
+
+@rate_corrections_bp.route('/api/providers/missing-rates', methods=['GET'])
+def get_providers_missing_rates():
+    """
+    Retrieve providers with missing rate information.
+    
+    Returns:
+        JSON response with provider rate failure details
+    """
+    try:
+        # Get all validation failures
+        all_failures = get_validation_failures()
         
-        # Find the most recent validation failures file
-        failures_files = list(log_dir.glob('validation_failures_*.json'))
-        if not failures_files:
-            return jsonify({
-                'error': 'No validation failure files found',
-                'code_summary': {},
-                'provider_summary': {},
-                'distinct_codes': [],
-                'distinct_codes_count': 0,
-                'total_missing': 0
-            })
-            
-        # Sort by modification time (most recent first)
-        latest_file = sorted(failures_files, key=os.path.getmtime, reverse=True)[0]
+        # Filter for rate-related failures
+        rate_failures = [
+            f for f in all_failures 
+            if f.get('validation_type') == 'rate'
+        ]
         
-        # Load the failures
-        with open(latest_file, 'r') as f:
-            all_failures = json.load(f)
-        
-        # Filter for rate failures only
-        rate_failures = [f for f in all_failures if f.get('validation_type') == 'rate']
-        
-        # Initialize summary data structures
-        code_summary = {}  # Category -> details
-        provider_summary = {}  # TIN -> details
-        distinct_codes = set()  # Set of unique CPT codes
-        
-        # Process each failure record
+        # Group failures by provider
+        providers = {}
         for failure in rate_failures:
-            # Get provider info
+            # Extract provider information
             provider_info = failure.get('provider_info', {})
             tin = provider_info.get('TIN', '')
             
             # Clean TIN
             tin = ''.join(c for c in str(tin) if c.isdigit())
             if len(tin) != 9:
-                continue  # Skip invalid TINs
-                
-            # Process rates array
-            rates = failure.get('rates', [])
-            for rate_item in rates:
-                if 'cpt' not in rate_item:
-                    continue
-                    
-                cpt = rate_item['cpt']
-                category = rate_item.get('category', 'Uncategorized')
-                
-                # Add to distinct codes
-                distinct_codes.add(cpt)
-                
-                # Update code summary
-                if category not in code_summary:
-                    code_summary[category] = {
-                        'count': 0,
-                        'distinct_codes': [],
-                        'providers_count': 0,
-                        'providers': []
-                    }
-                
-                code_summary[category]['count'] += 1
-                if cpt not in code_summary[category]['distinct_codes']:
-                    code_summary[category]['distinct_codes'].append(cpt)
-                if tin not in code_summary[category]['providers']:
-                    code_summary[category]['providers'].append(tin)
-                    code_summary[category]['providers_count'] += 1
-                
-                # Update provider summary
-                if tin not in provider_summary:
-                    provider_summary[tin] = {
-                        'name': provider_info.get('DBA Name Billing Name', 'Unknown Provider'),
-                        'network': provider_info.get('Provider Network', 'Unknown'),
-                        'codes_count': 0,
-                        'codes': []
-                    }
-                
-                if cpt not in provider_summary[tin]['codes']:
-                    provider_summary[tin]['codes'].append(cpt)
-                    provider_summary[tin]['codes_count'] += 1
-        
-        # Convert distinct_codes set to list for JSON serialization
-        distinct_codes_list = list(distinct_codes)
-        
-        return jsonify({
-            'code_summary': code_summary,
-            'provider_summary': provider_summary,
-            'distinct_codes': distinct_codes_list,
-            'distinct_codes_count': len(distinct_codes_list),
-            'total_missing': sum(summary['count'] for summary in code_summary.values())
-        })
-    except Exception as e:
-        logger.error(f"Error getting missing codes summary: {e}")
-        return jsonify({'error': str(e)}), 500
-    
-
-@rate_corrections_bp.route('/api/update_code_rate', methods=['POST'])
-def update_code_rate():
-    """Update rate for an individual CPT code."""
-    try:
-        data = request.json
-        tin = data.get('tin', '')
-        provider_name = data.get('provider_name', 'Unknown Provider')
-        cpt_code = data.get('cpt_code', '')
-        category = data.get('category', 'Uncategorized')
-        rate = data.get('rate', 0)
-        
-        if not tin or not cpt_code:
-            return jsonify({'error': 'TIN and CPT code are required'}), 400
-        
-        # Clean TIN
-        tin = ''.join(c for c in str(tin) if c.isdigit())
-        if len(tin) != 9:
-            return jsonify({'error': 'Invalid TIN format'}), 400
-            
-        if not rate or rate <= 0:
-            return jsonify({'error': 'Rate must be greater than zero'}), 400
-            
-        # Initialize PPO updater
-        ppo_updater = PPOUpdater(config.DB_PATH)
-        
-        # Update the single rate
-        success, message = ppo_updater.update_single_rate(
-            state='XX',  # Default state if not available
-            tin=tin,
-            provider_name=provider_name,
-            proc_cd=cpt_code,
-            modifier='',  # Empty modifier
-            rate=rate
-        )
-        
-        if not success:
-            return jsonify({'error': message}), 500
-            
-        # Return success message with details
-        return jsonify({
-            'success': True,
-            'message': message,
-            'details': {
-                'tin': tin,
-                'provider_name': provider_name,
-                'cpt_code': cpt_code,
-                'category': category,
-                'rate': rate
-            }
-        })
-    except Exception as e:
-        logger.error(f"Error updating code rate: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@rate_corrections_bp.route('/api/tins', methods=['GET'])
-def list_tins():
-    """List all TINs from rate validation failures that need correction."""
-    try:
-        # Look in the validation logs directory for the latest failures file
-        log_dir = Path(config.VALIDATION_LOGS_PATH)
-        
-        # Find the most recent validation failures file
-        failures_files = list(log_dir.glob('validation_failures_*.json'))
-        if not failures_files:
-            return jsonify({'error': 'No validation failure files found', 'tins': []})
-            
-        # Sort by modification time (most recent first)
-        latest_file = sorted(failures_files, key=os.path.getmtime, reverse=True)[0]
-        
-        # Load the failures
-        with open(latest_file, 'r') as f:
-            all_failures = json.load(f)
-        
-        # Filter for rate failures only
-        rate_failures = [f for f in all_failures if f.get('validation_type') == 'rate']
-        
-        # Group by TIN
-        tin_groups = {}
-        for failure in rate_failures:
-            tin = failure.get('tin', '')
-            if not tin:
-                # Try to get TIN from provider_info
-                provider_info = failure.get('provider_info', {})
-                tin = provider_info.get('TIN', '')
-            
-            # Skip if still no TIN
-            if not tin:
                 continue
-                
-            # Clean TIN
-            tin = ''.join(c for c in str(tin) if c.isdigit())
-            if len(tin) != 9:
-                continue
-                
-            # Group by TIN
-            if tin not in tin_groups:
-                tin_groups[tin] = {
+            
+            if tin not in providers:
+                providers[tin] = {
                     'tin': tin,
-                    'provider_name': failure.get('provider_info', {}).get('DBA Name Billing Name', 'Unknown Provider'),
-                    'provider_network': failure.get('provider_info', {}).get('Provider Network', 'Unknown'),
-                    'provider_status': failure.get('provider_info', {}).get('Provider Status', 'Unknown'),
-                    'failures_count': 0,
-                    'cpt_codes': set(),
-                    'files': []
+                    'name': provider_info.get('DBA Name Billing Name', 'Unknown Provider'),
+                    'network': provider_info.get('Provider Network', 'Unknown'),
+                    'total_line_items': 0,
+                    'missing_rate_line_items': 0,
+                    'missing_category_line_items': 0,
+                    'cpt_codes': set()
                 }
             
-            # Add to count and track unique CPT codes
-            tin_groups[tin]['failures_count'] += 1
-            
-            # Add CPT codes from rates array
-            rates = failure.get('rates', [])
-            for rate_item in rates:
-                if 'cpt' in rate_item:
-                    tin_groups[tin]['cpt_codes'].add(rate_item['cpt'])
-            
-            # Add file info if not already added
-            file_name = failure.get('file_name', '')
-            if file_name and file_name not in [f['file_name'] for f in tin_groups[tin]['files']]:
-                tin_groups[tin]['files'].append({
-                    'file_name': file_name,
-                    'order_id': failure.get('order_id', ''),
-                    'patient_name': failure.get('patient_name', ''),
-                    'date_of_service': failure.get('date_of_service', '')
-                })
+            # Count line items and CPT codes
+            if failure.get('rates'):
+                providers[tin]['total_line_items'] += len(failure['rates'])
+                providers[tin]['missing_rate_line_items'] += sum(
+                    1 for rate in failure['rates'] if not rate.get('rate')
+                )
+                providers[tin]['missing_category_line_items'] += sum(
+                    1 for rate in failure['rates'] if not rate.get('category') or rate.get('category') == 'Uncategorized'
+                )
+                
+                # Track unique CPT codes
+                providers[tin]['cpt_codes'].update(
+                    rate.get('cpt') for rate in failure['rates'] if rate.get('cpt')
+                )
         
-        # Convert to list and convert sets to lists for JSON serialization
-        result = []
-        for tin, data in tin_groups.items():
-            data['cpt_codes'] = list(data['cpt_codes'])
-            result.append(data)
-            
-        # Sort by failures count (highest first)
-        result.sort(key=lambda x: x['failures_count'], reverse=True)
+        # Convert set to list for JSON serialization
+        for provider in providers.values():
+            provider['cpt_codes'] = list(provider['cpt_codes'])
         
-        return jsonify({'tins': result})
+        return jsonify(list(providers.values()))
+    
     except Exception as e:
-        logger.error(f"Error listing TINs: {e}")
-        return jsonify({'error': str(e), 'tins': []})
+        logger.error(f"Error retrieving providers with missing rates: {e}")
+        return jsonify({'error': str(e)}), 500
 
-@rate_corrections_bp.route('/api/tin/<tin>/details', methods=['GET'])
-def get_tin_details(tin):
-    """Get detailed information about a TIN including failure details and current rates."""
+@rate_corrections_bp.route('/api/provider/details', methods=['GET'])
+def get_provider_rate_details():
+    """
+    Get detailed rate information for a specific provider (TIN)
+    """
     try:
-        # Clean TIN
-        tin = ''.join(c for c in str(tin) if c.isdigit())
-        if len(tin) != 9:
-            return jsonify({'error': 'Invalid TIN format'}), 400
-            
-        # Initialize PPO updater
-        ppo_updater = PPOUpdater(config.DB_PATH)
+        tin = request.args.get('tin')
+        if not tin:
+            return jsonify({'error': 'TIN is required'}), 400
+
+        # Get all validation failures
+        all_failures = get_validation_failures()
         
-        # Get current rates for this TIN
+        # Filter failures for this TIN
+        provider_failures = [
+            f for f in all_failures 
+            if f.get('validation_type') == 'rate' and 
+               f.get('provider_info', {}).get('TIN', '').replace('-', '') == tin.replace('-', '')
+        ]
+        
+        # Prepare detailed information
+        details = {
+            'tin': tin,
+            'total_line_items': 0,
+            'missing_rate_items': [],
+            'current_rates': [],
+            'possible_categories': {}
+        }
+        
+        # Process failures
+        for failure in provider_failures:
+            if failure.get('rates'):
+                details['total_line_items'] += len(failure['rates'])
+                
+                for rate_item in failure['rates']:
+                    # Track missing rate items
+                    if not rate_item.get('rate'):
+                        details['missing_rate_items'].append({
+                            'cpt_code': rate_item.get('cpt', ''),
+                            'description': rate_item.get('description', ''),
+                            'current_category': rate_item.get('category', 'Uncategorized')
+                        })
+        
+        # Get current rates from PPO database
+        ppo_updater = PPOUpdater(DB_PATH)
         current_rates_df = ppo_updater.get_provider_rates(tin)
-        current_rates = []
         
         if not current_rates_df.empty:
-            for _, row in current_rates_df.iterrows():
-                current_rates.append({
-                    'proc_cd': row['proc_cd'],
-                    'category': row['proc_category'],
-                    'rate': row['rate'],
-                    'modifier': row['modifier']
-                })
+            details['current_rates'] = current_rates_df.to_dict('records')
         
-        # Find the most recent validation failures file
-        log_dir = Path(config.VALIDATION_LOGS_PATH)
-        failures_files = list(log_dir.glob('validation_failures_*.json'))
-        if not failures_files:
-            return jsonify({
-                'tin': tin,
-                'current_rates': current_rates,
-                'failures': []
-            })
-            
-        latest_file = sorted(failures_files, key=os.path.getmtime, reverse=True)[0]
-        
-        # Load the failures
-        with open(latest_file, 'r') as f:
-            all_failures = json.load(f)
-        
-        # Filter for rate failures for this TIN
-        failures = []
-        for failure in all_failures:
-            if failure.get('validation_type') != 'rate':
-                continue
-                
-            failure_tin = failure.get('tin', '')
-            if not failure_tin:
-                # Try to get TIN from provider_info
-                provider_info = failure.get('provider_info', {})
-                failure_tin = provider_info.get('TIN', '')
-            
-            # Skip if not matching TIN
-            failure_tin = ''.join(c for c in str(failure_tin) if c.isdigit())
-            if failure_tin != tin:
-                continue
-                
-            # Add to failures list
-            failures.append(failure)
-        
-        # Get all procedure categories
-        categories = PPOUpdater.get_all_categories()
-        category_details = {}
-        
+        # Get all possible categories from PPOUpdater
+        categories = ppo_updater.get_all_categories()
         for category in categories:
-            procs = PPOUpdater.get_procedures_in_category(category)
-            category_details[category] = {
-                'proc_codes': procs,
-                'count': len(procs)
+            details['possible_categories'][category] = {
+                'cpt_codes': ppo_updater.get_procedures_in_category(category),
+                'total_codes': len(ppo_updater.get_procedures_in_category(category))
             }
         
-        return jsonify({
-            'tin': tin,
-            'current_rates': current_rates,
-            'failures': failures,
-            'categories': category_details
-        })
+        return jsonify(details)
+    
     except Exception as e:
-        logger.error(f"Error getting TIN details: {e}")
+        logger.error(f"Error retrieving provider rate details: {e}")
         return jsonify({'error': str(e)}), 500
 
-@rate_corrections_bp.route('/api/categories', methods=['GET'])
-def get_categories():
-    """Get all procedure categories defined in the PPOUpdater."""
-    try:
-        categories = PPOUpdater.get_all_categories()
-        category_details = {}
-        
-        for category in categories:
-            procs = PPOUpdater.get_procedures_in_category(category)
-            category_details[category] = {
-                'proc_codes': procs,
-                'count': len(procs)
-            }
-        
-        return jsonify({'categories': category_details})
-    except Exception as e:
-        logger.error(f"Error getting categories: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@rate_corrections_bp.route('/api/update_category_rates', methods=['POST'])
-def update_category_rates():
-    """Update rates for one or more categories for a TIN."""
+@rate_corrections_bp.route('/api/corrections/line-items', methods=['POST'])
+def save_line_item_corrections():
+    """
+    Save line item rate corrections for a provider
+    """
     try:
         data = request.json
-        tin = data.get('tin', '')
-        provider_name = data.get('provider_name', 'Unknown Provider')
-        state = data.get('state', 'XX')
+        tin = data.get('tin')
+        line_items = data.get('line_items', [])
+        
+        if not tin or not line_items:
+            return jsonify({'error': 'TIN and line items are required'}), 400
+        
+        # Initialize PPO updater
+        ppo_updater = PPOUpdater(DB_PATH)
+        
+        # Track updates
+        successful_updates = []
+        failed_updates = []
+        
+        for item in line_items:
+            cpt_code = item.get('cpt_code')
+            rate = item.get('rate')
+            category = item.get('category', '')
+            
+            if not cpt_code or not rate:
+                failed_updates.append({
+                    'cpt_code': cpt_code,
+                    'reason': 'Missing CPT code or rate'
+                })
+                continue
+            
+            # Validate rate
+            try:
+                rate = float(rate)
+                if rate <= 0:
+                    raise ValueError("Rate must be positive")
+            except ValueError:
+                failed_updates.append({
+                    'cpt_code': cpt_code,
+                    'reason': 'Invalid rate value'
+                })
+                continue
+            
+            # Update single rate
+            success, message = ppo_updater.update_single_rate(
+                state='XX',  # Default state
+                tin=tin,
+                provider_name='Unknown Provider',
+                proc_cd=cpt_code,
+                modifier='',
+                rate=rate
+            )
+            
+            if success:
+                successful_updates.append({
+                    'cpt_code': cpt_code,
+                    'rate': rate,
+                    'category': category
+                })
+            else:
+                failed_updates.append({
+                    'cpt_code': cpt_code,
+                    'reason': message
+                })
+        
+        return jsonify({
+            'successful_updates': successful_updates,
+            'failed_updates': failed_updates,
+            'total_processed': len(line_items),
+            'total_successful': len(successful_updates),
+            'total_failed': len(failed_updates)
+        })
+    
+    except Exception as e:
+        logger.error(f"Error saving line item corrections: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@rate_corrections_bp.route('/api/corrections/category', methods=['POST'])
+def save_category_corrections():
+    """
+    Save category-based rate corrections for a provider
+    """
+    try:
+        data = request.json
+        tin = data.get('tin')
         category_rates = data.get('category_rates', {})
         
         if not tin or not category_rates:
             return jsonify({'error': 'TIN and category rates are required'}), 400
         
-        # Clean TIN
-        tin = ''.join(c for c in str(tin) if c.isdigit())
-        if len(tin) != 9:
-            return jsonify({'error': 'Invalid TIN format'}), 400
-            
         # Initialize PPO updater
-        ppo_updater = PPOUpdater(config.DB_PATH)
+        ppo_updater = PPOUpdater(DB_PATH)
         
-        # Validate category rates
-        valid_categories = PPOUpdater.get_all_categories()
-        invalid_categories = [cat for cat in category_rates.keys() if cat not in valid_categories]
-        
-        if invalid_categories:
-            return jsonify({
-                'error': f"Invalid categories: {', '.join(invalid_categories)}",
-                'valid_categories': valid_categories
-            }), 400
-        
-        # Update the rates
+        # Update rates by category
         success, message = ppo_updater.update_rate_by_category(
-            state=state,
+            state='XX',  # Default state
             tin=tin,
-            provider_name=provider_name,
+            provider_name='Unknown Provider',
             category_rates=category_rates
         )
         
-        if not success:
-            return jsonify({'error': message}), 500
+        if success:
+            # Calculate total procedures updated
+            total_procedures = sum(
+                len(ppo_updater.get_procedures_in_category(category)) 
+                for category in category_rates
+            )
             
-        # Return success message with details
-        total_procs = sum(len(PPOUpdater.get_procedures_in_category(cat)) for cat in category_rates.keys())
-        
-        return jsonify({
-            'success': True,
-            'message': f"Successfully updated rates for {total_procs} procedures across {len(category_rates)} categories",
-            'details': {
-                'tin': tin,
-                'provider_name': provider_name,
-                'categories': list(category_rates.keys()),
-                'total_procedures': total_procs
-            }
-        })
+            return jsonify({
+                'success': True,
+                'message': message,
+                'total_procedures_updated': total_procedures,
+                'categories_updated': list(category_rates.keys())
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 500
+    
     except Exception as e:
-        logger.error(f"Error updating category rates: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@rate_corrections_bp.route('/api/pdf/<filename>', methods=['GET'])
-def get_pdf(filename):
-    """Serve the PDF file for the bill."""
-    try:
-        # Convert JSON filename to PDF filename
-        pdf_filename = Path(filename).stem + '.pdf'
-        pdf_path = config.FOLDERS['PDF_FOLDER'] / pdf_filename
-        
-        if not pdf_path.exists():
-            return jsonify({'error': 'PDF not found'}), 404
-            
-        return send_file(pdf_path, mimetype='application/pdf')
-    except Exception as e:
-        logger.error(f"Error serving PDF {filename}: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@rate_corrections_bp.route('/api/resolve', methods=['POST'])
-def resolve_rate_failure():
-    """Mark a rate failure as resolved after corrections."""
-    try:
-        data = request.json
-        tin = data.get('tin', '')
-        action = data.get('action', 'category_update')
-        details = data.get('details', {})
-        
-        if not tin:
-            return jsonify({'error': 'TIN is required'}), 400
-        
-        # For now, we'll just return success
-        # In a real implementation, you would:
-        # 1. Update the failure records to mark them as resolved
-        # 2. Possibly move the files to a "resolved" folder
-        # 3. Create an audit log entry of the resolution
-        
-        return jsonify({
-            'success': True, 
-            'message': f'Rate failures for TIN {tin} marked as resolved',
-            'action': action,
-            'details': details
-        })
-    except Exception as e:
-        logger.error(f"Error resolving rate failures: {e}")
+        logger.error(f"Error saving category corrections: {e}")
         return jsonify({'error': str(e)}), 500
