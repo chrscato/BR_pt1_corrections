@@ -304,48 +304,107 @@ function validateForm() {
     return isValid;
 }
 
-async function saveProviderChanges() {
+async function saveProviderChanges(event) {
+    event.preventDefault();
+    
+    const saveButton = document.querySelector('#saveProviderButton');
+    const form = document.getElementById('providerForm');
+    
+    if (!form) {
+        showAlert('Error: Provider form not found', 'error');
+        return;
+    }
+
+    if (!saveButton) {
+        showAlert('Error: Save button not found', 'error');
+        return;
+    }
+
+    // Validate form before proceeding
     if (!validateForm()) {
         showAlert('Please fill in all required fields.', 'error');
         return;
     }
 
-    const primaryKey = document.getElementById('primaryKey').value;
-    if (!primaryKey) {
-        alert('Invalid provider selection.');
-        return;
-    }
-
-    const updates = {
-        "Billing Name": document.getElementById('billingName').value.trim(),
-        "TIN": formatTIN(document.getElementById('tin').value.trim()),
-        "NPI": formatNPI(document.getElementById('npi').value.trim()),
-        "Billing Address 1": document.getElementById('billingAddress1').value.trim(),
-        "Billing Address 2": document.getElementById('billingAddress2').value.trim() || null,
-        "Billing Address City": document.getElementById('billingCity').value.trim(),
-        "Billing Address State": document.getElementById('billingState').value.trim(),
-        "Billing Address Postal Code": document.getElementById('billingZip').value.trim(),
-        "Provider Type": document.getElementById('providerType').value.trim(),
-        "Provider Network": document.getElementById('providerNetwork').value.trim(),
-        "Provider Status": document.getElementById('providerStatus').value.trim()
-    };
-
     try {
+        // Disable save button and show loading state
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
+        // Get the primary key
+        const primaryKey = document.getElementById('primaryKey').value;
+        if (!primaryKey) {
+            throw new Error('Invalid provider selection.');
+        }
+
+        // Prepare the updates object
+        const updates = {
+            "Billing Name": document.getElementById('billingName').value.trim(),
+            "TIN": formatTIN(document.getElementById('tin').value.trim()),
+            "NPI": formatNPI(document.getElementById('npi').value.trim()),
+            "Billing Address 1": document.getElementById('billingAddress1').value.trim(),
+            "Billing Address 2": document.getElementById('billingAddress2').value.trim() || null,
+            "Billing Address City": document.getElementById('billingCity').value.trim(),
+            "Billing Address State": document.getElementById('billingState').value.trim(),
+            "Billing Address Postal Code": document.getElementById('billingZip').value.trim(),
+            "Provider Type": document.getElementById('providerType').value.trim(),
+            "Provider Network": document.getElementById('providerNetwork').value.trim(),
+            "Provider Status": document.getElementById('providerStatus').value.trim()
+        };
+
         const response = await fetch('/provider_corrections/api/provider/update', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ primary_key: primaryKey, updates })
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                primary_key: primaryKey,
+                updates: updates
+            })
         });
 
-        const data = await response.json();
-        if (data.success) {
-            showAlert(data.message, 'success');
-        } else {
-            showAlert(data.error || 'Failed to update provider.', 'error');
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
         }
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to update provider.');
+        }
+
+        // Show success message
+        showAlert('Provider information saved successfully!', 'success');
+
+        // Clear the form
+        form.reset();
+
+        // Update loading state to show refresh is happening
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing list...';
+
+        // Reload the provider list
+        await loadProviders();
+
+        // Reset the save button
+        saveButton.disabled = false;
+        saveButton.innerHTML = 'Save Changes';
+
+        // Hide the editor if no more providers need corrections
+        const providerCount = document.getElementById('providerCount');
+        if (providerCount && providerCount.textContent === '0') {
+            const providerEditor = document.getElementById('providerEditor');
+            if (providerEditor) {
+                providerEditor.classList.add('d-none');
+            }
+        }
+
     } catch (error) {
-        console.error('Error updating provider:', error);
-        showAlert('Error updating provider.', 'error');
+        console.error('Error saving provider changes:', error);
+        showAlert(`Error saving changes: ${error.message}`, 'error');
+        
+        // Reset the save button on error
+        saveButton.disabled = false;
+        saveButton.innerHTML = 'Save Changes';
     }
 }
 

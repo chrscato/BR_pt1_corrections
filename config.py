@@ -2,6 +2,7 @@
 Centralized configuration for the Medical Records Processing application.
 """
 from pathlib import Path
+import os
 
 # Application settings
 HOST = '0.0.0.0'
@@ -54,4 +55,20 @@ FEATURES = {
     'DARK_MODE': True,
     'CPT_VALIDATION': True,
     'AUTO_SEARCH': True
+}
+
+# Base directory of the application
+BASE_DIR = Path(__file__).resolve().parent
+
+# Ensure required directories exist
+for folder in FOLDERS.values():
+    folder.mkdir(exist_ok=True)
+
+# Database configuration
+DATABASE_CONFIG = {
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'database': os.getenv('DB_NAME', 'provider_db'),
+    'user': os.getenv('DB_USER', 'postgres'),
+    'password': os.getenv('DB_PASSWORD', 'postgres'),
+    'port': int(os.getenv('DB_PORT', '5432'))
 }

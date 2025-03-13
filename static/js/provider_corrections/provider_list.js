@@ -36,16 +36,24 @@ async function loadProviders() {
             return;
         }
 
+        // Clear existing content
         providerList.innerHTML = '';
 
         // Update provider count badge
         const providerCount = document.getElementById('providerCount');
+        const totalProviders = data.providers ? data.providers.length : 0;
         if (providerCount) {
-            providerCount.textContent = data.providers ? data.providers.length : '0';
+            providerCount.textContent = totalProviders.toString();
+            
+            // Update count color based on number of providers
+            providerCount.className = 'badge rounded-pill ' + 
+                (totalProviders > 5 ? 'bg-danger' : 
+                 totalProviders > 0 ? 'bg-warning' : 
+                 'bg-success');
         }
 
         if (data.providers && data.providers.length > 0) {
-            console.log(`Found ${data.providers.length} providers with missing fields from failures`);
+            console.log(`Found ${data.providers.length} providers with missing fields`);
 
             data.providers.forEach(provider => {
                 const listItem = document.createElement('div');
@@ -53,7 +61,8 @@ async function loadProviders() {
                 listItem.setAttribute('data-provider', JSON.stringify(provider));
 
                 // Add severity class based on missing field count
-                const missingCount = provider.missing_count || 0;
+                const missingFields = provider.missing_fields || [];
+                const missingCount = missingFields.length;
                 if (missingCount >= 5) {
                     listItem.classList.add('missing-critical');
                 } else if (missingCount >= 3) {
@@ -69,22 +78,53 @@ async function loadProviders() {
                 const tinDisplay = provider.TIN ? provider.TIN : 'Missing';
                 const npiDisplay = provider.NPI || 'Missing';
 
+                // Create missing fields badges
+                const missingFieldsBadges = missingFields.map(field => 
+                    `<span class="badge bg-danger me-1">${field}</span>`
+                ).join('');
+
                 listItem.innerHTML = `
                     <div class="d-flex w-100 justify-content-between">
                         <h6 class="mb-1">${providerName}</h6>
+                        <small class="text-muted">${missingCount} missing</small>
                     </div>
                     <p class="mb-1 small">TIN: ${tinDisplay} | NPI: ${npiDisplay}</p>
+                    <div class="missing-fields-container">
+                        <small class="text-muted d-block mb-1">Missing Fields:</small>
+                        ${missingFieldsBadges}
+                    </div>
                 `;
 
                 providerList.appendChild(listItem);
             });
 
             // Set up event listeners *AFTER* all providers are added
-            setTimeout(() => {
-                setupProviderListEventListeners();
-            }, 100);
+            setupProviderListEventListeners();
+            
         } else {
-            providerList.innerHTML = '<div class="list-group-item">No providers with missing fields found</div>';
+            // Show completion message when no providers need corrections
+            providerList.innerHTML = `
+                <div class="alert alert-success mb-0">
+                    <h5 class="alert-heading">All Provider Corrections Completed! 🎉</h5>
+                    <p class="mb-0">There are no providers requiring corrections at this time.</p>
+                </div>
+            `;
+            
+            // Clear any active provider details
+            const providerInfo = document.getElementById('providerInfo');
+            if (providerInfo) {
+                providerInfo.innerHTML = `
+                    <div class="alert alert-info">
+                        All provider corrections are complete. Great job!
+                    </div>
+                `;
+            }
+            
+            // Hide the editor if it's visible
+            const providerEditor = document.getElementById('providerEditor');
+            if (providerEditor) {
+                providerEditor.classList.add('d-none');
+            }
         }
     } catch (error) {
         console.error('Error loading providers:', error);
