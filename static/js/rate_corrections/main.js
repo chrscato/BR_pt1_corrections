@@ -1,20 +1,23 @@
 /**
  * Rate Corrections Main Application Logic
  */
+window.RateCorrections = window.RateCorrections || {
+    providers: [],
+    selectedProvider: null,
+    metrics: {
+        totalProviders: 0,
+        missingRateLineItems: 0,
+        missingCategoryCodes: 0,
+        totalCPTCodes: 0
+    },
+    currentTIN: null,
+    currentProviderName: null,
+    selectedCategories: {}
+};
+
 class RateCorrectionsApp {
     constructor() {
-        // Application state
-        this.state = {
-            providers: [],
-            selectedProvider: null,
-            metrics: {
-                totalProviders: 0,
-                missingRateLineItems: 0,
-                missingCategoryCodes: 0,
-                totalCPTCodes: 0
-            }
-        };
-
+        this.state = window.RateCorrections;
         // View management
         this.views = {
             dashboard: document.getElementById('dashboardMetricsPanel'),
@@ -26,6 +29,9 @@ class RateCorrectionsApp {
 
         // Initialize event listeners
         this.initEventListeners();
+        
+        // Make selectProvider available globally
+        window.RateCorrections.selectProvider = this.selectProvider.bind(this);
     }
 
     /**
@@ -41,12 +47,13 @@ class RateCorrectionsApp {
     /**
      * Fetch and display initial dashboard metrics
      */
+    // Fix the loadDashboardMetrics function
     async loadDashboardMetrics() {
         try {
             const response = await fetch('/rate_corrections/api/providers/missing-rates');
             
             if (!response.ok) {
-                throw new Error('Failed to fetch providers');
+                throw new Error(`Failed to fetch providers: ${response.status} ${response.statusText}`);
             }
 
             const providers = await response.json();
@@ -75,7 +82,7 @@ class RateCorrectionsApp {
             this.renderProvidersList();
         } catch (error) {
             console.error('Error loading dashboard metrics:', error);
-            this.showAlert('Failed to load rate correction metrics', 'danger');
+            this.showAlert('Failed to load rate correction metrics: ' + error.message, 'danger');
         }
     }
 
@@ -83,8 +90,24 @@ class RateCorrectionsApp {
      * Update dashboard metrics in the UI
      */
     updateDashboardMetrics() {
-        const metrics = this.state.metrics;
-        
+        const metrics = {
+            totalProviders: this.state.providers.length,
+            missingRateLineItems: 0,
+            missingCategoryCodes: 0,
+            totalCPTCodes: 0
+        };
+
+        // Calculate metrics from current providers
+        this.state.providers.forEach(provider => {
+            metrics.missingRateLineItems += provider.missing_rate_line_items || 0;
+            metrics.missingCategoryCodes += provider.missing_category_line_items || 0;
+            metrics.totalCPTCodes += (provider.cpt_codes || []).length;
+        });
+
+        // Update state
+        this.state.metrics = metrics;
+
+        // Update UI
         document.getElementById('totalProvidersMetric').textContent = 
             metrics.totalProviders.toLocaleString();
         
@@ -106,6 +129,17 @@ class RateCorrectionsApp {
         
         // Clear existing content
         container.innerHTML = '';
+
+        // If no providers left, show empty state
+        if (!this.state.providers || this.state.providers.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-success">
+                    <h4>All Provider Corrections Completed</h4>
+                    <p>There are no providers requiring rate corrections at this time.</p>
+                </div>
+            `;
+            return;
+        }
 
         // Render providers
         this.state.providers.forEach(provider => {
@@ -136,19 +170,29 @@ class RateCorrectionsApp {
 
             container.appendChild(providerItem);
         });
+
+        // Update metrics
+        this.updateDashboardMetrics();
     }
 
     /**
      * Select a provider and load their details
      * @param {Object} provider - Selected provider details
      */
+    // Fix the selectProvider function
     async selectProvider(provider) {
         try {
+            // Update UI to reflect loading state
+            const detailContent = document.getElementById('providerDetailContent');
+            if (detailContent) {
+                detailContent.innerHTML = '<div class="d-flex justify-content-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            }
+            
             // Fetch detailed provider information
             const response = await fetch(`/rate_corrections/api/provider/details?tin=${provider.tin}`);
             
             if (!response.ok) {
-                throw new Error('Failed to fetch provider details');
+                throw new Error(`Failed to fetch provider details: ${response.status} ${response.statusText}`);
             }
 
             const providerDetails = await response.json();
@@ -158,6 +202,11 @@ class RateCorrectionsApp {
                 ...provider,
                 details: providerDetails
             };
+            
+            // Store in global state for other components
+            window.RateCorrections.currentTIN = provider.tin;
+            window.RateCorrections.currentProviderName = provider.name;
+            window.RateCorrections.currentProviderData = providerDetails;
 
             // Switch to provider detail view
             this.switchToProviderDetailView();
@@ -166,7 +215,7 @@ class RateCorrectionsApp {
             this.renderProviderDetails(providerDetails);
         } catch (error) {
             console.error('Error selecting provider:', error);
-            this.showAlert('Failed to load provider details', 'danger');
+            this.showAlert('Failed to load provider details: ' + error.message, 'danger');
         }
     }
 
@@ -267,6 +316,10 @@ class RateCorrectionsApp {
 
         this.views.dashboard.style.display = 'block';
         this.views.providerDetails.style.display = 'none';
+
+        // Force re-render of providers list
+        this.renderProvidersList();
+        this.updateDashboardMetrics();
     }
 
     /**

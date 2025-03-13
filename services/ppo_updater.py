@@ -68,6 +68,63 @@ class PPOUpdater:
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
             self.logger.setLevel(logging.INFO)
+        
+        # Verify database schema
+        self._verify_database_schema()
+
+    def _verify_database_schema(self):
+        """
+        Verify that the database has the correct schema.
+        Creates the table if it doesn't exist.
+        """
+        try:
+            with self._connect() as conn:
+                cursor = conn.cursor()
+                
+                # Check if table exists
+                cursor.execute("""
+                    SELECT name 
+                    FROM sqlite_master 
+                    WHERE type='table' AND name='ppo'
+                """)
+                
+                if not cursor.fetchone():
+                    self.logger.warning("PPO table not found, creating it...")
+                    
+                    # Create the table
+                    cursor.execute("""
+                        CREATE TABLE ppo (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            RenderingState TEXT,
+                            TIN TEXT,
+                            provider_name TEXT,
+                            proc_cd TEXT,
+                            modifier TEXT,
+                            proc_category TEXT,
+                            rate REAL,
+                            UNIQUE(TIN, proc_cd, modifier)
+                        )
+                    """)
+                    conn.commit()
+                    self.logger.info("PPO table created successfully")
+                else:
+                    # Verify columns
+                    cursor.execute("PRAGMA table_info(ppo)")
+                    columns = {row['name'] for row in cursor.fetchall()}
+                    expected_columns = {
+                        'id', 'RenderingState', 'TIN', 'provider_name', 
+                        'proc_cd', 'modifier', 'proc_category', 'rate'
+                    }
+                    
+                    if not expected_columns.issubset(columns):
+                        missing = expected_columns - columns
+                        raise ValueError(f"Database schema is missing columns: {missing}")
+                    
+                    self.logger.info("Database schema verified successfully")
+        
+        except Exception as e:
+            self.logger.error(f"Error verifying database schema: {e}", exc_info=True)
+            raise
 
     def _connect(self) -> sqlite3.Connection:
         """
@@ -76,9 +133,28 @@ class PPOUpdater:
         Returns:
             SQLite database connection
         """
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            self.logger.info(f"Attempting to connect to database at {self.db_path}")
+            if not self.db_path.exists():
+                raise FileNotFoundError(f"Database file not found at {self.db_path}")
+            
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            
+            # Test the connection
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+            
+            self.logger.info("Successfully connected to database")
+            return conn
+        
+        except sqlite3.Error as e:
+            self.logger.error(f"SQLite error connecting to database: {e}", exc_info=True)
+            raise
+        except Exception as e:
+            self.logger.error(f"Unexpected error connecting to database: {e}", exc_info=True)
+            raise
 
     def update_single_rate(
         self, 
@@ -223,8 +299,10 @@ class PPOUpdater:
             # Clean TIN
             tin = ''.join(c for c in str(tin) if c.isdigit())
             if len(tin) != 9:
+                self.logger.warning(f"Invalid TIN format: {tin}")
                 return []
             
+            self.logger.info(f"Getting rates for TIN: {tin}")
             with self._connect() as conn:
                 cursor = conn.cursor()
                 
@@ -234,12 +312,26 @@ class PPOUpdater:
                     WHERE TIN = ?
                 """, (tin,))
                 
+                rows = cursor.fetchall()
+                self.logger.info(f"Found {len(rows)} rates for TIN {tin}")
+                
                 # Convert rows to dictionaries
-                return [dict(row) for row in cursor.fetchall()]
+                return [
+                    {
+                        'cpt_code': row['proc_cd'],
+                        'category': row['proc_category'],
+                        'rate': float(row['rate']) if row['rate'] else None,
+                        'modifier': row['modifier']
+                    }
+                    for row in rows
+                ]
         
         except sqlite3.Error as e:
-            self.logger.error(f"Database error retrieving rates: {e}")
-            return []
+            self.logger.error(f"Database error retrieving rates: {e}", exc_info=True)
+            raise
+        except Exception as e:
+            self.logger.error(f"Unexpected error retrieving rates: {e}", exc_info=True)
+            raise
 
     def _get_category_for_code(self, proc_cd: str) -> str:
         """
@@ -251,10 +343,17 @@ class PPOUpdater:
         Returns:
             Category name or 'Uncategorized'
         """
+        # Clean the procedure code
+        proc_cd = str(proc_cd).strip()
+        self.logger.info(f"Looking up category for CPT code: {proc_cd}")
+        
         for category, codes in self.PROCEDURE_CATEGORIES.items():
+            self.logger.info(f"Checking category {category} with codes: {codes}")
             if proc_cd in codes:
+                self.logger.info(f"Found match in category {category}")
                 return category
         
+        self.logger.warning(f"No category found for CPT code {proc_cd}")
         return "Uncategorized"
 
     @classmethod

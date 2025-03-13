@@ -122,7 +122,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/rate_corrections/main.js') }}"></script>
-<script src="{{ url_for('static', filename='js/rate_corrections/provider.js') }}"></script>
-<script src="{{ url_for('static', filename='js/rate_corrections/corrections.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/rate_corrections/provider.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/rate_corrections/corrections.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/rate_corrections/main.js') }}"></script>
 {% endblock %}

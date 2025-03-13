@@ -62,6 +62,9 @@ class RateCorrectionWorkflow {
         this.elements.providerDetailContent.innerHTML = `
             <div class="line-item-correction-container">
                 <h3>Line Item Rate Corrections: ${this.state.provider.name}</h3>
+                <div class="alert alert-info">
+                    Remaining corrections: <span id="remainingCorrections">${this.state.lineItems.length}</span>
+                </div>
                 <table class="table table-bordered table-hover">
                     <thead>
                         <tr>
@@ -74,7 +77,7 @@ class RateCorrectionWorkflow {
                     </thead>
                     <tbody id="lineItemsCorrectionBody">
                         ${this.state.lineItems.map((item, index) => `
-                            <tr>
+                            <tr id="line-item-${index}">
                                 <td>${item.cpt_code}</td>
                                 <td>${item.description}</td>
                                 <td>
@@ -156,7 +159,7 @@ class RateCorrectionWorkflow {
     saveIndividualLineItem(index) {
         const lineItem = this.state.lineItems[index];
         const rateInput = document.querySelector(`.rate-input[data-index="${index}"]`);
-        const saveButton = document.querySelector(`.save-line-item[data-index="${index}"]`);
+        const row = document.getElementById(`line-item-${index}`);
 
         // Validate line item
         if (!lineItem.suggestedRate || lineItem.suggestedRate <= 0) {
@@ -172,13 +175,21 @@ class RateCorrectionWorkflow {
             category: lineItem.suggestedCategory
         };
 
-        // Perform save (would typically call an API)
+        // Perform save
         this.saveLineItemToServer(saveData)
             .then(() => {
-                // Mark as saved
-                saveButton.disabled = true;
-                saveButton.textContent = 'Saved';
-                rateInput.classList.add('is-valid');
+                // Remove item from state
+                this.state.lineItems.splice(index, 1);
+                
+                // Remove the row with animation
+                row.style.transition = 'opacity 0.5s';
+                row.style.opacity = '0';
+                
+                setTimeout(() => {
+                    row.remove();
+                    document.getElementById('remainingCorrections').textContent = this.state.lineItems.length;
+                }, 500);
+                
                 this.showAlert(`Saved rate for ${lineItem.cpt_code}`, 'success');
             })
             .catch(error => {
@@ -211,8 +222,17 @@ class RateCorrectionWorkflow {
         // Perform bulk save
         this.saveLineItemsToServer(saveData)
             .then(result => {
-                this.showAlert(`Saved ${result.total_successful} of ${result.total_processed} line items`, 'success');
-                // Optionally refresh or update UI
+                if (result.total_successful > 0) {
+                    // Clear all items from state
+                    this.state.lineItems = [];
+                    
+                    // Clear the table body
+                    const tbody = document.getElementById('lineItemsCorrectionBody');
+                    tbody.innerHTML = '';
+                    document.getElementById('remainingCorrections').textContent = '0';
+                    
+                    this.showAlert(`Saved ${result.total_successful} of ${result.total_processed} line items`, 'success');
+                }
             })
             .catch(error => {
                 this.showAlert(`Bulk save failed: ${error.message}`, 'danger');
@@ -438,137 +458,151 @@ class RateCorrectionWorkflow {
                 throw new Error('Failed to save line item');
             }
 
-            return await response.json();
+            const result = await response.json();
+            
+            // Refresh provider details after successful save
+            if (window.RateCorrections && window.RateCorrections.selectProvider) {
+                await window.RateCorrections.selectProvider(this.state.provider);
+            }
+            
+            return result;
         } catch (error) {
             console.error('Line item save error:', error);
             throw error;
         }
     }
-/**
+
+    /**
      * Save multiple line items to the server
      * @param {Array} lineItems - Line items to save
      * @returns {Promise} Save result
      */
-async saveLineItemsToServer(lineItems) {
-    try {
-        const response = await fetch('/rate_corrections/api/corrections/line-items', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                tin: this.state.provider.tin,
-                line_items: lineItems
-            })
-        });
+    async saveLineItemsToServer(lineItems) {
+        try {
+            const response = await fetch('/rate_corrections/api/corrections/line-items', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tin: this.state.provider.tin,
+                    line_items: lineItems
+                })
+            });
 
-        if (!response.ok) {
-            throw new Error('Failed to save line items');
+            if (!response.ok) {
+                throw new Error('Failed to save line items');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Line items save error:', error);
+            throw error;
         }
-
-        return await response.json();
-    } catch (error) {
-        console.error('Line items save error:', error);
-        throw error;
     }
-}
 
-/**
- * Save a category rate to the server
- * @param {string} category - Category to save
- * @param {number} rate - Rate for the category
- * @returns {Promise} Save result
- */
-async saveCategoryRateToServer(category, rate) {
-    try {
-        const response = await fetch('/rate_corrections/api/corrections/category', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                tin: this.state.provider.tin,
-                category_rates: {
-                    [category]: rate
-                }
-            })
-        });
+    /**
+     * Save a category rate to the server
+     * @param {string} category - Category to save
+     * @param {number} rate - Rate for the category
+     * @returns {Promise} Save result
+     */
+    async saveCategoryRateToServer(category, rate) {
+        try {
+            const response = await fetch('/rate_corrections/api/corrections/category', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tin: this.state.provider.tin,
+                    category_rates: {
+                        [category]: rate
+                    }
+                })
+            });
 
-        if (!response.ok) {
-            throw new Error('Failed to save category rate');
+            if (!response.ok) {
+                throw new Error('Failed to save category rate');
+            }
+
+            const result = await response.json();
+            
+            // Refresh provider details after successful save
+            if (window.RateCorrections && window.RateCorrections.selectProvider) {
+                await window.RateCorrections.selectProvider(this.state.provider);
+            }
+            
+            this.showAlert(`Successfully applied ${category} category rate`, 'success');
+            return result;
+        } catch (error) {
+            console.error('Category rate save error:', error);
+            this.showAlert(`Failed to save ${category} category rate`, 'danger');
+            throw error;
         }
-
-        const result = await response.json();
-        this.showAlert(`Successfully applied ${category} category rate`, 'success');
-        return result;
-    } catch (error) {
-        console.error('Category rate save error:', error);
-        this.showAlert(`Failed to save ${category} category rate`, 'danger');
-        throw error;
     }
-}
 
-/**
- * Save all category rates to the server
- * @param {Object} categoryRates - Category rates to save
- * @returns {Promise} Save result
- */
-async saveCategoryRatesToServer(categoryRates) {
-    try {
-        const response = await fetch('/rate_corrections/api/corrections/category', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                tin: this.state.provider.tin,
-                category_rates: categoryRates
-            })
-        });
+    /**
+     * Save all category rates to the server
+     * @param {Object} categoryRates - Category rates to save
+     * @returns {Promise} Save result
+     */
+    async saveCategoryRatesToServer(categoryRates) {
+        try {
+            const response = await fetch('/rate_corrections/api/corrections/category', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tin: this.state.provider.tin,
+                    category_rates: categoryRates
+                })
+            });
 
-        if (!response.ok) {
-            throw new Error('Failed to save category rates');
+            if (!response.ok) {
+                throw new Error('Failed to save category rates');
+            }
+
+            const result = await response.json();
+            this.showAlert(`Successfully saved rates for ${Object.keys(categoryRates).length} categories`, 'success');
+            return result;
+        } catch (error) {
+            console.error('Category rates save error:', error);
+            this.showAlert('Failed to save category rates', 'danger');
+            throw error;
         }
-
-        const result = await response.json();
-        this.showAlert(`Successfully saved rates for ${Object.keys(categoryRates).length} categories`, 'success');
-        return result;
-    } catch (error) {
-        console.error('Category rates save error:', error);
-        this.showAlert('Failed to save category rates', 'danger');
-        throw error;
     }
-}
 
-/**
- * Show an alert message
- * @param {string} message - Message to display
- * @param {string} type - Alert type (success, danger, warning, info)
- */
-showAlert(message, type = 'info') {
-    const alertContainer = document.createElement('div');
-    alertContainer.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
-    alertContainer.setAttribute('role', 'alert');
-    
-    alertContainer.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
+    /**
+     * Show an alert message
+     * @param {string} message - Message to display
+     * @param {string} type - Alert type (success, danger, warning, info)
+     */
+    showAlert(message, type = 'info') {
+        const alertContainer = document.createElement('div');
+        alertContainer.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+        alertContainer.setAttribute('role', 'alert');
+        
+        alertContainer.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
 
-    document.body.appendChild(alertContainer);
+        document.body.appendChild(alertContainer);
 
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        alertContainer.classList.remove('show');
-        setTimeout(() => alertContainer.remove(), 150);
-    }, 5000);
-}
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            alertContainer.classList.remove('show');
+            setTimeout(() => alertContainer.remove(), 150);
+        }, 5000);
+    }
 }
 
 // Global function to trigger workflow from main application
 window.triggerCorrectionWorkflow = (provider, correctionType) => {
-const workflow = new RateCorrectionWorkflow();
-workflow.initWorkflow(provider, correctionType);
+    const workflow = new RateCorrectionWorkflow();
+    workflow.initWorkflow(provider, correctionType);
 };
 
 export default RateCorrectionWorkflow;
