@@ -1,0 +1,87 @@
+/* OTA Corrections Styles */
+
+/* Provider List */
+.provider-item {
+    padding: 10px !important;
+    border-bottom: 1px solid #dee2e6 !important;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.provider-item:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.provider-item.active {
+    background-color: rgba(13, 110, 253, 0.05);
+    border-left-color: #0d6efd;
+}
+
+/* Rate Input Styling */
+.rate-input {
+    max-width: 150px;
+}
+
+.rate-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Modifier Input Styling */
+.modifier-input {
+    max-width: 100px;
+}
+
+/* Table Styling */
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* Save Button Styling */
+.save-line-item {
+    min-width: 80px;
+}
+
+/* Alert Styling */
+.alert {
+    margin-bottom: 1rem;
+}
+
+/* Dark Mode Support */
+.dark-mode .provider-item {
+    border-bottom-color: #2d3436;
+}
+
+.dark-mode .provider-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .provider-item.active {
+    background-color: rgba(13, 110, 253, 0.15);
+}
+
+.dark-mode .table th {
+    background-color: #2d3436;
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Completion Message */
+.completion-message {
+    text-align: center;
+    padding: 2rem;
+}
+
+.completion-message .btn {
+    margin-top: 1rem;
+} 

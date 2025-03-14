@@ -35,6 +35,7 @@ from routes.corrections import corrections_bp
 from routes.escalations import escalations_bp
 from routes.rate_corrections import rate_corrections_bp
 from routes.provider_corrections import provider_corrections_bp
+from routes.ota_corrections import ota_corrections_bp
 
 # Register blueprints
 app.register_blueprint(unmapped_bp, url_prefix='/unmapped')
@@ -42,6 +43,7 @@ app.register_blueprint(corrections_bp, url_prefix='/corrections')
 app.register_blueprint(escalations_bp, url_prefix='/escalations')
 app.register_blueprint(rate_corrections_bp, url_prefix='/rate_corrections')
 app.register_blueprint(provider_corrections_bp, url_prefix='/provider_corrections')
+app.register_blueprint(ota_corrections_bp, url_prefix='/ota_corrections')
 
 
 

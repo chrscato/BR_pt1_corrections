@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Medical Records Processing{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-4 mb-4">Medical Records Processing</h1>
+            <p class="lead mb-5">Select a task to begin:</p>
+            
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Provider Corrections</h5>
+                            <p class="card-text">Update provider information and details.</p>
+                            <a href="{{ url_for('provider_corrections') }}" class="btn btn-primary">
+                                Go to Provider Corrections
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Rate Corrections</h5>
+                            <p class="card-text">Update provider rates and billing information.</p>
+                            <a href="{{ url_for('rate_corrections') }}" class="btn btn-primary">
+                                Go to Rate Corrections
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">OTA Corrections</h5>
+                            <p class="card-text">Update out-of-network provider rates and billing information.</p>
+                            <a href="{{ url_for('ota_corrections') }}" class="btn btn-primary">
+                                Go to OTA Corrections
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

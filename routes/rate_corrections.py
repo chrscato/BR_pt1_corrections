@@ -74,6 +74,7 @@ def get_validation_failures() -> List[Dict[str, Any]]:
 def get_providers_missing_rates():
     """
     Retrieve providers with missing rate information.
+    Excludes out-of-network providers which are handled separately.
     
     Returns:
         JSON response with provider rate failure details
@@ -94,6 +95,11 @@ def get_providers_missing_rates():
             # Extract provider information
             provider_info = failure.get('provider_info', {})
             tin = provider_info.get('TIN', '')
+            network = provider_info.get('Provider Network', '').lower() if provider_info.get('Provider Network') else ''
+            
+            # Skip out-of-network providers
+            if any(term in network for term in ['out of network', 'out-of-network', 'ota']):
+                continue
             
             # Clean TIN
             tin = ''.join(c for c in str(tin) if c.isdigit())

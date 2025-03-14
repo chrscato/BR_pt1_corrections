@@ -49,6 +49,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if '/ota_corrections' in request.path %}active{% endif %}" href="{{ url_for('ota_corrections.index') }}">
+                            OTA Corrections
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if '/provider_corrections' in request.path %}active{% endif %}" href="{{ url_for('provider_corrections.index') }}">
                             Provider Corrections
                         </a>
