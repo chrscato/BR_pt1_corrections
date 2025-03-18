@@ -112,8 +112,8 @@ class OTAProviderManager {
 
                 suggestions[category] = parseFloat(mostCommonRate);
             } else {
-                // No existing rate, use a default
-                suggestions[category] = 500.00;
+                // No default rate - leave it empty for user input
+                suggestions[category] = null;
             }
         });
 

@@ -154,6 +154,17 @@ def get_provider_rate_details():
         if not tin:
             return jsonify({'error': 'TIN is required'}), 400
 
+        # Initialize PPO updater for database access
+        ppo_updater = PPOUpdater(DB_PATH)
+        
+        # Get current rates from PPO database first
+        try:
+            current_rates = ppo_updater.get_provider_rates(tin)
+            logger.info(f"Retrieved {len(current_rates)} current rates for TIN {tin}")
+        except Exception as e:
+            logger.error(f"Error getting rates from PPO database: {e}", exc_info=True)
+            current_rates = []
+
         # Get all validation failures
         try:
             all_failures = get_validation_failures()
@@ -182,55 +193,42 @@ def get_provider_rate_details():
             'tin': tin,
             'total_line_items': 0,
             'missing_rate_items': [],
-            'current_rates': [],
-            'possible_categories': {}
+            'current_rates': current_rates,
+            'possible_categories': ppo_updater.PROCEDURE_CATEGORIES
         }
+        
+        # Create a lookup of existing rates
+        existing_rates = {rate['cpt_code']: rate for rate in current_rates}
         
         # Process failures
         try:
-            # Initialize PPO updater for category lookup
-            ppo_updater = PPOUpdater(DB_PATH)
-            
             for failure in provider_failures:
                 if failure.get('rates'):
                     details['total_line_items'] += len(failure['rates'])
                     
                     for rate_item in failure.get('rates', []):
-                        # Track missing rate items
-                        if not rate_item.get('rate'):
-                            cpt_code = rate_item.get('cpt', '')
+                        cpt_code = rate_item.get('cpt', '')
+                        
+                        # Only include if rate is not in PPO database
+                        if cpt_code and cpt_code not in existing_rates:
                             # Get category from PPOUpdater
                             category = ppo_updater._get_category_for_code(cpt_code)
                             details['missing_rate_items'].append({
                                 'cpt_code': cpt_code,
                                 'description': rate_item.get('description', ''),
-                                'current_category': category
+                                'current_category': category,
+                                'order_id': failure.get('order_id'),
+                                'patient_name': failure.get('patient_name', 'Unknown'),
+                                'date_of_service': failure.get('date_of_service', 'Unknown')
                             })
+            
             logger.info(f"Processed {details['total_line_items']} line items, found {len(details['missing_rate_items'])} missing rates")
+            
+            return jsonify(details)
+            
         except Exception as e:
             logger.error(f"Error processing failures: {e}", exc_info=True)
             return jsonify({'error': f'Error processing failures: {str(e)}'}), 500
-        
-        # Get current rates from PPO database
-        try:
-            logger.info(f"Attempting to connect to database at {DB_PATH}")
-            ppo_updater = PPOUpdater(DB_PATH)
-            current_rates = ppo_updater.get_provider_rates(tin)
-            logger.info(f"Retrieved {len(current_rates)} current rates for TIN {tin}")
-            
-            # Convert rates to list of dictionaries if they exist
-            if current_rates:
-                details['current_rates'] = current_rates
-            
-            # Get all possible categories from PPOUpdater
-            details['possible_categories'] = ppo_updater.PROCEDURE_CATEGORIES
-            logger.info(f"Successfully retrieved categories and rates")
-            
-        except Exception as e:
-            logger.error(f"Error getting rates from PPO database: {e}", exc_info=True)
-            return jsonify({'error': f'Database error: {str(e)}'}), 500
-        
-        return jsonify(details)
     
     except Exception as e:
         logger.error(f"Error retrieving provider rate details: {e}", exc_info=True)

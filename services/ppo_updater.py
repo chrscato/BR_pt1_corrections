@@ -17,7 +17,7 @@ class PPOUpdater:
     # Predefined procedure categories
     PROCEDURE_CATEGORIES = {
         "MRI w/o": [
-            "70551", "72141", "73721", "70540", "72195", 
+            "70551", "72141", "73721", "73718","70540", "72195", 
             "72146", "73221", "73218"
         ],
         "MRI w/": [
@@ -47,7 +47,11 @@ class PPOUpdater:
             "74010", "74000", "74020", "76080", "73050", 
             "73600", "73610", "77072", "77073", "73650", 
             "72040", "72050", "71010", "71021", "71023", 
-            "71022", "71020", "71030", "71034", "71035"
+            "71022", "71020", "71030", "71034", "71035","73130"
+        ],
+        "Ultrasound": [
+            "76700", "76705", "76770", "76775", "76536",
+            "76604", "76642", "76856", "76857", "76870"
         ]
     }
 
@@ -195,7 +199,7 @@ class PPOUpdater:
                 cursor.execute("""
                     SELECT COUNT(*) as count 
                     FROM ppo 
-                    WHERE TIN = ? AND proc_cd = ? AND modifier = ?
+                    WHERE TRIM(TIN) = TRIM(?) AND TRIM(proc_cd) = TRIM(?) AND TRIM(modifier) = TRIM(?)
                 """, (tin, proc_cd, modifier))
                 
                 exists = cursor.fetchone()['count'] > 0
@@ -208,14 +212,14 @@ class PPOUpdater:
                             provider_name = ?, 
                             rate = ?,
                             proc_category = ?
-                        WHERE TIN = ? AND proc_cd = ? AND modifier = ?
+                        WHERE TRIM(TIN) = TRIM(?) AND TRIM(proc_cd) = TRIM(?) AND TRIM(modifier) = TRIM(?)
                     """, (state, provider_name, rate, category, tin, proc_cd, modifier))
                 else:
                     # Insert new entry
                     cursor.execute("""
                         INSERT INTO ppo 
                         (RenderingState, TIN, provider_name, proc_cd, modifier, proc_category, rate) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, TRIM(?), ?, TRIM(?), TRIM(?), ?, ?)
                     """, (state, tin, provider_name, proc_cd, modifier, category, rate))
                 
                 conn.commit()
@@ -269,7 +273,7 @@ class PPOUpdater:
                         cursor.execute("""
                             INSERT OR REPLACE INTO ppo 
                             (RenderingState, TIN, provider_name, proc_cd, modifier, proc_category, rate) 
-                            VALUES (?, ?, ?, ?, '', ?, ?)
+                            VALUES (?, TRIM(?), ?, TRIM(?), TRIM(''), ?, ?)
                         """, (state, tin, provider_name, proc_cd, category, rate))
                         
                         total_updates += 1
@@ -309,7 +313,7 @@ class PPOUpdater:
                 cursor.execute("""
                     SELECT proc_cd, proc_category, rate, modifier 
                     FROM ppo 
-                    WHERE TIN = ?
+                    WHERE TRIM(TIN) = TRIM(?)
                 """, (tin,))
                 
                 rows = cursor.fetchall()

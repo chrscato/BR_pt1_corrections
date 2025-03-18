@@ -15,23 +15,71 @@ window.RateCorrections = window.RateCorrections || {
     selectedCategories: {}
 };
 
-class RateCorrectionsApp {
+export class RateCorrectionsApp {
     constructor() {
         this.state = window.RateCorrections;
-        // View management
-        this.views = {
+        this.initialize();
+    }
+
+    /**
+     * Initialize the application
+     */
+    initialize() {
+        // Wait for DOM to be fully loaded and parsed
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.setupViews();
+            });
+        } else {
+            // If DOM is already loaded, setup views immediately
+            this.setupViews();
+        }
+    }
+
+    /**
+     * Set up view references and initialize event listeners
+     */
+    setupViews() {
+        // Ensure all required elements exist
+        const requiredElements = {
             dashboard: document.getElementById('dashboardMetricsPanel'),
             providerDetails: document.getElementById('providerDetailsPanel'),
             dashboardViewBtn: document.getElementById('dashboardViewBtn'),
             providerDetailViewBtn: document.getElementById('providerDetailViewBtn'),
-            correctionWorkflowBtn: document.getElementById('correctionWorkflowBtn')
+            correctionWorkflowBtn: document.getElementById('correctionWorkflowBtn'),
+            refreshDashboardBtn: document.getElementById('refreshDashboardBtn')
         };
+
+        // Debug log all elements
+        console.log('Checking DOM elements:', Object.fromEntries(
+            Object.entries(requiredElements).map(([key, element]) => [
+                key,
+                element ? 'Found' : 'Missing'
+            ])
+        ));
+
+        // Verify all elements are found
+        const missingElements = Object.entries(requiredElements)
+            .filter(([key, element]) => !element)
+            .map(([key]) => key);
+
+        if (missingElements.length > 0) {
+            console.error('Missing required DOM elements:', missingElements);
+            console.error('Please ensure these elements exist in the HTML template.');
+            return;
+        }
+
+        // Store references
+        this.views = requiredElements;
 
         // Initialize event listeners
         this.initEventListeners();
         
         // Make selectProvider available globally
         window.RateCorrections.selectProvider = this.selectProvider.bind(this);
+
+        // Load initial data
+        this.loadDashboardMetrics();
     }
 
     /**
@@ -39,9 +87,19 @@ class RateCorrectionsApp {
      */
     initEventListeners() {
         // View switching
-        this.views.dashboardViewBtn.addEventListener('click', () => this.switchToDashboardView());
-        this.views.providerDetailViewBtn.addEventListener('click', () => this.switchToProviderDetailView());
-        this.views.correctionWorkflowBtn.addEventListener('click', () => this.switchToCorrectionWorkflow());
+        if (this.views.dashboardViewBtn) {
+            this.views.dashboardViewBtn.addEventListener('click', () => this.switchToDashboardView());
+        }
+        if (this.views.providerDetailViewBtn) {
+            this.views.providerDetailViewBtn.addEventListener('click', () => this.switchToProviderDetailView());
+        }
+        if (this.views.correctionWorkflowBtn) {
+            this.views.correctionWorkflowBtn.addEventListener('click', () => this.switchToCorrectionWorkflow());
+        }
+        if (this.views.refreshDashboardBtn) {
+            this.views.refreshDashboardBtn.addEventListener('click', () => this.refreshDashboard());
+            console.log('Refresh button event listener attached');
+        }
     }
 
     /**
@@ -375,19 +433,134 @@ class RateCorrectionsApp {
     }
 
     /**
-     * Initialize the application
+     * Refresh the current provider's data and update the UI
      */
-    init() {
-        // Load initial dashboard metrics
-        this.loadDashboardMetrics();
+    async refreshCurrentProvider() {
+        if (this.state.currentProvider) {
+            try {
+                // Fetch fresh provider details
+                const response = await fetch(`/rate_corrections/api/provider/details?tin=${this.state.currentProvider.tin}`);
+                if (!response.ok) throw new Error('Failed to refresh provider data');
+                
+                const data = await response.json();
+                
+                // Update provider details in the UI
+                this.renderProviderDetails(data);
+                
+                // Refresh the providers list to update counts
+                await this.loadProviders();
+            } catch (error) {
+                console.error('Error refreshing provider data:', error);
+                showErrorToast('Failed to refresh provider data');
+            }
+        }
+    }
+
+    /**
+     * Save line item corrections and refresh the view
+     */
+    async saveLineItemCorrections(lineItems) {
+        try {
+            const response = await fetch('/rate_corrections/api/corrections/line-items', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tin: this.state.currentProvider.tin,
+                    line_items: lineItems
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to save line item corrections');
+            
+            const result = await response.json();
+            if (result.success) {
+                showSuccessToast('Line item corrections saved successfully');
+                // Refresh the view to show updated data
+                await this.refreshCurrentProvider();
+            } else {
+                showErrorToast(result.error || 'Failed to save corrections');
+            }
+            
+            return result;
+        } catch (error) {
+            console.error('Error saving line item corrections:', error);
+            showErrorToast('Failed to save corrections');
+            throw error;
+        }
+    }
+
+    /**
+     * Save category corrections and refresh the view
+     */
+    async saveCategoryCorrections(categoryRates) {
+        try {
+            const response = await fetch('/rate_corrections/api/corrections/category', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tin: this.state.currentProvider.tin,
+                    category_rates: categoryRates
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to save category corrections');
+            
+            const result = await response.json();
+            if (result.success) {
+                showSuccessToast('Category corrections saved successfully');
+                // Refresh the view to show updated data
+                await this.refreshCurrentProvider();
+            } else {
+                showErrorToast(result.error || 'Failed to save corrections');
+            }
+            
+            return result;
+        } catch (error) {
+            console.error('Error saving category corrections:', error);
+            showErrorToast('Failed to save corrections');
+            throw error;
+        }
+    }
+
+    /**
+     * Refresh the dashboard data and UI
+     */
+    async refreshDashboard() {
+        try {
+            // Show loading state
+            this.views.refreshDashboardBtn.disabled = true;
+            this.views.refreshDashboardBtn.innerHTML = `
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Refreshing...
+            `;
+
+            // Reload dashboard metrics
+            await this.loadDashboardMetrics();
+
+            // Reset button state
+            this.views.refreshDashboardBtn.disabled = false;
+            this.views.refreshDashboardBtn.innerHTML = `
+                <i class="fas fa-sync-alt"></i> Refresh
+            `;
+
+            // Show success message
+            this.showAlert('Dashboard refreshed successfully', 'success');
+        } catch (error) {
+            console.error('Error refreshing dashboard:', error);
+            this.showAlert('Failed to refresh dashboard: ' + error.message, 'danger');
+
+            // Reset button state
+            this.views.refreshDashboardBtn.disabled = false;
+            this.views.refreshDashboardBtn.innerHTML = `
+                <i class="fas fa-sync-alt"></i> Refresh
+            `;
+        }
     }
 }
 
-// Create and initialize the application when the DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    const app = new RateCorrectionsApp();
-    app.init();
-
-    // Expose app instance globally for debugging and potential external access
-    window.rateCorrectionsApp = app;
-});
+// Export the class as default
+export default RateCorrectionsApp;

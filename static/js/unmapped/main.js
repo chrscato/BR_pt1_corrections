@@ -30,6 +30,24 @@ function setupEventListeners() {
             saveChanges();
         });
     }
+
+    // Escalate button
+    const escalateButton = document.getElementById('escalateButton');
+    if (escalateButton) {
+        escalateButton.addEventListener('click', showEscalationForm);
+    }
+
+    // Cancel escalation button
+    const cancelEscalation = document.getElementById('cancelEscalation');
+    if (cancelEscalation) {
+        cancelEscalation.addEventListener('click', hideEscalationForm);
+    }
+
+    // Submit escalation button
+    const submitEscalation = document.getElementById('submitEscalation');
+    if (submitEscalation) {
+        submitEscalation.addEventListener('click', submitEscalation);
+    }
 }
 
 /**
@@ -110,6 +128,9 @@ async function loadFile(filename) {
                 item.classList.remove('active');
             }
         });
+
+        // Update escalate button state
+        updateEscalateButton();
     } catch (error) {
         console.error('Error loading file:', error);
         document.getElementById('recordDetails').innerHTML = 
@@ -468,4 +489,92 @@ function editPatientInfo() {
 
 function editServiceLines() {
     alert('Service line editing not implemented yet');
+}
+
+/**
+ * Handle escalation button click
+ */
+function showEscalationForm() {
+    document.getElementById('escalationForm').classList.remove('d-none');
+    document.getElementById('escalateButton').classList.add('d-none');
+    document.getElementById('saveButton').classList.add('d-none');
+}
+
+/**
+ * Handle cancel escalation
+ */
+function hideEscalationForm() {
+    document.getElementById('escalationForm').classList.add('d-none');
+    document.getElementById('escalateButton').classList.remove('d-none');
+    document.getElementById('saveButton').classList.remove('d-none');
+    document.getElementById('escalationNotes').value = '';
+}
+
+/**
+ * Submit escalation to server
+ */
+async function submitEscalation() {
+    if (!currentFileName || !currentData) {
+        showAlert('No file loaded', 'error');
+        return;
+    }
+
+    const notes = document.getElementById('escalationNotes').value.trim();
+    if (!notes) {
+        showAlert('Please provide escalation notes', 'warning');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/escalate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                filename: currentFileName,
+                content: currentData,
+                notes: notes
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to escalate record');
+        }
+
+        showAlert('Record escalated successfully', 'success');
+        hideEscalationForm();
+        
+        // Reload file list since this file was moved
+        loadFiles();
+        
+        // Clear current file display
+        clearCurrentFile();
+
+    } catch (error) {
+        console.error('Escalation error:', error);
+        showAlert(`Error escalating record: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Enable/disable escalate button based on file selection
+ */
+function updateEscalateButton() {
+    const escalateButton = document.getElementById('escalateButton');
+    if (escalateButton) {
+        escalateButton.disabled = !currentFileName;
+    }
+}
+
+// Add to your existing clearCurrentFile function
+function clearCurrentFile() {
+    // ... existing code ...
+    
+    // Reset escalation form
+    hideEscalationForm();
+    updateEscalateButton();
+    
+    // ... rest of existing code ...
 }

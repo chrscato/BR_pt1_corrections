@@ -3,61 +3,128 @@
  * @param {Object} data - Provider data from the server
  */
 function renderProviderDetails(data) {
-    // No failures found
-    if (!data.failures || data.failures.length === 0) {
-        document.getElementById('providerInfo').innerHTML = `
-            <div class="alert alert-warning">
-                No rate failures found for TIN: ${formatTIN(data.tin)}
-            </div>
-        `;
-        document.getElementById('providerDetails').classList.add('d-none');
-        return;
-    }
-    
-    // Show provider details
-    document.getElementById('providerDetails').classList.remove('d-none');
-    
-    // Get provider info from first failure record
-    const providerInfo = data.failures[0].provider_info || {};
-    
-    // Update provider details
-    document.getElementById('providerName').textContent = 
-        window.RateCorrections.currentProviderName || 'Unknown Provider';
-    document.getElementById('providerTIN').textContent = formatTIN(data.tin);
-    document.getElementById('providerNPI').textContent = providerInfo.NPI || 'N/A';
-    document.getElementById('providerNetwork').textContent = providerInfo['Provider Network'] || 'Unknown';
-    document.getElementById('providerLocation').textContent = providerInfo['Location'] || 'Unknown';
-    document.getElementById('providerStatus').textContent = providerInfo['Provider Status'] || 'Unknown';
-    
-    // Network status badge
-    const networkStatus = providerInfo['Provider Network'] || '';
-    const isOutOfNetwork = typeof networkStatus === 'string' && networkStatus.includes('Out');
-    const networkClass = isOutOfNetwork ? 'danger' : 'success';
-    const networkBadge = `<span class="badge bg-${networkClass}">${networkStatus}</span>`;
-    
+    // Clear any existing content
+    const detailsContainer = document.getElementById('providerDetails');
+    if (!detailsContainer) return;
+
+    // Create network badge
+    const networkBadge = data.network ? 
+        `<span class="badge bg-secondary">${data.network}</span>` : '';
+
     // Update provider info area
     document.getElementById('providerInfo').innerHTML = `
         <div class="provider-header">
-            <h5>${window.RateCorrections.currentProviderName || 'Unknown Provider'}</h5>
+            <h5>${data.name || 'Unknown Provider'}</h5>
             ${networkBadge}
         </div>
         <p class="mb-2">TIN: ${formatTIN(data.tin)}</p>
-        <p class="mb-0"><small>${data.failures.length} rate failures found</small></p>
+        <p class="mb-0">
+            <small>
+                ${data.total_line_items} total line items, 
+                ${data.missing_rate_items.length} missing rates
+            </small>
+        </p>
     `;
-    
-    // Extract missing CPT codes with their categories
-    const missingCodes = extractMissingCodes(data.failures);
-    
-    // Display missing codes section if not empty
-    const missingCodesSection = document.getElementById('missingCodesSection');
-    if (missingCodesSection) {
-        if (missingCodes.length > 0) {
-            missingCodesSection.classList.remove('d-none');
-            renderMissingCodesTable(missingCodes);
-        } else {
-            missingCodesSection.classList.add('d-none');
-        }
+
+    // Render missing rates table
+    const missingRatesTable = document.getElementById('missingRatesTable');
+    if (missingRatesTable && data.missing_rate_items.length > 0) {
+        const tableBody = missingRatesTable.querySelector('tbody');
+        tableBody.innerHTML = '';
+
+        data.missing_rate_items.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.cpt_code}</td>
+                <td>${item.description || 'N/A'}</td>
+                <td>${item.current_category || 'Uncategorized'}</td>
+                <td>
+                    <div class="input-group input-group-sm">
+                        <input type="number" class="form-control rate-input" 
+                               data-cpt="${item.cpt_code}"
+                               placeholder="Enter rate"
+                               step="0.01"
+                               min="0">
+                        <button class="btn btn-primary save-line-item" 
+                                data-cpt="${item.cpt_code}">
+                            Save
+                        </button>
+                    </div>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        // Show the missing rates section
+        document.getElementById('missingRatesSection').classList.remove('d-none');
+    } else {
+        // Hide the missing rates section if no missing rates
+        document.getElementById('missingRatesSection').classList.add('d-none');
     }
+
+    // Render current rates table
+    const currentRatesTable = document.getElementById('currentRatesTable');
+    if (currentRatesTable && data.current_rates.length > 0) {
+        const tableBody = currentRatesTable.querySelector('tbody');
+        tableBody.innerHTML = '';
+
+        data.current_rates.forEach(rate => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${rate.cpt_code}</td>
+                <td>${rate.category || 'Uncategorized'}</td>
+                <td>$${rate.rate.toFixed(2)}</td>
+                <td>${rate.modifier || 'N/A'}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        // Show the current rates section
+        document.getElementById('currentRatesSection').classList.remove('d-none');
+    } else {
+        // Hide the current rates section if no current rates
+        document.getElementById('currentRatesSection').classList.add('d-none');
+    }
+
+    // Setup event listeners for save buttons
+    setupSaveButtonListeners();
+}
+
+function setupSaveButtonListeners() {
+    // Remove existing listeners
+    document.querySelectorAll('.save-line-item').forEach(button => {
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+    });
+
+    // Add new listeners
+    document.querySelectorAll('.save-line-item').forEach(button => {
+        button.addEventListener('click', async () => {
+            const cptCode = button.dataset.cpt;
+            const rateInput = document.querySelector(`input[data-cpt="${cptCode}"]`);
+            
+            if (!rateInput || !rateInput.value) {
+                showErrorToast('Please enter a rate value');
+                return;
+            }
+
+            const rate = parseFloat(rateInput.value);
+            if (isNaN(rate) || rate <= 0) {
+                showErrorToast('Please enter a valid positive rate');
+                return;
+            }
+
+            try {
+                button.disabled = true;
+                await window.rateCorrections.saveLineItemCorrections([{
+                    cpt_code: cptCode,
+                    rate: rate
+                }]);
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
 }
 
 /**

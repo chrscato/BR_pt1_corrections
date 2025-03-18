@@ -145,13 +145,19 @@ function addCategoryToSelection() {
         return;
     }
     
+    // Check if category is already selected
+    if (window.RateCorrections.selectedCategories[category]) {
+        showAlert('This category is already selected', 'warning');
+        return;
+    }
+    
     // Add to selected categories
     window.RateCorrections.selectedCategories[category] = rate;
     
     // Update display
     updateSelectedCategoriesTable();
     
-    // Enable update button
+    // Enable update button if at least one category is selected
     document.getElementById('updateRatesButton').disabled = false;
     
     // Show selected categories table
@@ -178,6 +184,7 @@ function updateSelectedCategoriesTable() {
     
     if (Object.keys(selectedCategories).length === 0) {
         document.getElementById('selectedCategories').style.display = 'none';
+        document.getElementById('updateRatesButton').disabled = true;
         return;
     }
     
@@ -189,7 +196,18 @@ function updateSelectedCategoriesTable() {
         row.innerHTML = `
             <td>${category}</td>
             <td>${cptCount}</td>
-            <td>$${selectedCategories[category].toFixed(2)}</td>
+            <td>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">$</span>
+                    <input type="number" 
+                           class="form-control category-rate-input" 
+                           value="${selectedCategories[category].toFixed(2)}"
+                           data-category="${category}"
+                           min="0.01"
+                           step="0.01"
+                           onchange="updateCategoryRate('${category}', this.value)">
+                </div>
+            </td>
             <td>
                 <button class="btn btn-sm btn-outline-danger" onclick="removeCategory('${category}')">
                     Remove
@@ -199,6 +217,25 @@ function updateSelectedCategoriesTable() {
         
         table.appendChild(row);
     });
+}
+
+/**
+ * Update rate for a specific category
+ * @param {string} category - The category to update
+ * @param {string} value - The new rate value
+ */
+function updateCategoryRate(category, value) {
+    const rate = parseFloat(value);
+    if (!isNaN(rate) && rate > 0) {
+        window.RateCorrections.selectedCategories[category] = rate;
+    } else {
+        showAlert('Please enter a valid rate greater than zero', 'warning');
+        // Reset to previous value
+        const input = document.querySelector(`input[data-category="${category}"]`);
+        if (input) {
+            input.value = window.RateCorrections.selectedCategories[category].toFixed(2);
+        }
+    }
 }
 
 /**
