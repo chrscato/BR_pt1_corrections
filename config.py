@@ -31,7 +31,7 @@ FOLDERS = {
     'ORIGINALS_FOLDER': BASE_PATH / r"scripts\VAILIDATION\data\extracts\review\archive",
     
     # Shared folders
-    'PDF_FOLDER': BASE_PATH / r"pdf\dual_ocr\pdfs\archive",
+    'PDF_FOLDER': BASE_PATH / r"scripts\VAILIDATION\data\pdf\archive",
     
     # Rate Corrections folders
     'RATE_FAILURES_FOLDER': BASE_PATH / "validation logs",

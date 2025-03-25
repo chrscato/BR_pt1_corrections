@@ -35,7 +35,7 @@ function editServiceLines() {
                             <th>DOS</th>
                             <th>CPT</th>
                             <th>Modifiers</th>
-                            <th>Amount</th>
+                            <th>Charge</th>
                             <th>Actions</th>
                         </tr>
                     </thead>

@@ -44,9 +44,15 @@ function setupEventListeners() {
     }
 
     // Submit escalation button
-    const submitEscalation = document.getElementById('submitEscalation');
-    if (submitEscalation) {
-        submitEscalation.addEventListener('click', submitEscalation);
+    const submitEscalationBtn = document.getElementById('submitEscalation');
+    if (submitEscalationBtn) {
+        submitEscalationBtn.addEventListener('click', submitEscalation);
+    }
+
+    // Not Found button
+    const notFoundButton = document.getElementById('notFoundButton');
+    if (notFoundButton) {
+        notFoundButton.addEventListener('click', markAsNotFound);
     }
 }
 
@@ -175,7 +181,8 @@ function displayRecordDetails() {
                         <tr>
                             <th>DOS</th>
                             <th>CPT</th>
-                            <th>Amount</th>
+                            <th>Modifiers</th>
+                            <th>Charge</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -183,16 +190,22 @@ function displayRecordDetails() {
     
     if (serviceLines.length > 0) {
         serviceLines.forEach(line => {
+            // Format modifiers for display
+            const modifiersDisplay = line.modifiers && Array.isArray(line.modifiers) && line.modifiers.length > 0 
+                ? line.modifiers.join(', ') 
+                : 'N/A';
+                
             html += `
                 <tr>
                     <td>${line.date_of_service || 'N/A'}</td>
                     <td>${line.cpt_code || 'N/A'}</td>
+                    <td>${modifiersDisplay}</td>
                     <td>${line.charge_amount || 'N/A'}</td>
                 </tr>
             `;
         });
     } else {
-        html += `<tr><td colspan="3" class="text-center">No service lines found</td></tr>`;
+        html += `<tr><td colspan="4" class="text-center">No service lines found</td></tr>`;
     }
     
     html += `
@@ -360,6 +373,7 @@ function displaySearchResults(results) {
                     <p class="mb-1"><small>FileMaker: ${result.FileMaker_Record_Number}</small></p>
                     <p class="mb-1"><small>DOS: ${result.DOS_List || 'N/A'}</small></p>
                     <p class="mb-1"><small>CPT: ${result.CPT_List || 'N/A'}</small></p>
+                    <p class="mb-1"><small>Modifiers: ${result.Modifier_List || 'N/A'}</small></p>
                     <div class="d-flex justify-content-between">
                         <span class="badge bg-primary">Match: ${matchScore}%</span>
                         <span class="badge bg-info">Days: ${daysFromTarget}</span>
@@ -495,41 +509,41 @@ function editServiceLines() {
  * Handle escalation button click
  */
 function showEscalationForm() {
-    document.getElementById('escalationForm').classList.remove('d-none');
-    document.getElementById('escalateButton').classList.add('d-none');
-    document.getElementById('saveButton').classList.add('d-none');
+    const form = document.getElementById('escalationForm');
+    if (form) {
+        form.classList.remove('d-none');
+        // Clear any previous notes
+        document.getElementById('escalationNotes').value = '';
+    }
 }
 
 /**
  * Handle cancel escalation
  */
 function hideEscalationForm() {
-    document.getElementById('escalationForm').classList.add('d-none');
-    document.getElementById('escalateButton').classList.remove('d-none');
-    document.getElementById('saveButton').classList.remove('d-none');
-    document.getElementById('escalationNotes').value = '';
+    const form = document.getElementById('escalationForm');
+    if (form) {
+        form.classList.add('d-none');
+        // Clear the notes
+        document.getElementById('escalationNotes').value = '';
+    }
 }
 
 /**
  * Submit escalation to server
  */
 async function submitEscalation() {
-    if (!currentFileName || !currentData) {
-        showAlert('No file loaded', 'error');
-        return;
-    }
-
-    const notes = document.getElementById('escalationNotes').value.trim();
+    const notes = document.getElementById('escalationNotes').value;
     if (!notes) {
-        showAlert('Please provide escalation notes', 'warning');
+        alert('Please enter escalation notes');
         return;
     }
 
     try {
-        const response = await fetch('/api/escalate', {
+        const response = await fetch('/unmapped/api/escalate', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
             body: JSON.stringify({
                 filename: currentFileName,
@@ -538,23 +552,18 @@ async function submitEscalation() {
             })
         });
 
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to escalate record');
+        const result = await response.json();
+        if (response.ok) {
+            alert('File escalated successfully');
+            hideEscalationForm();
+            loadFiles();  // Refresh the file list
+            clearCurrentFile();  // Clear the current file display
+        } else {
+            throw new Error(result.error || 'Failed to escalate file');
         }
-
-        showAlert('Record escalated successfully', 'success');
-        hideEscalationForm();
-        
-        // Reload file list since this file was moved
-        loadFiles();
-        
-        // Clear current file display
-        clearCurrentFile();
-
     } catch (error) {
-        console.error('Escalation error:', error);
-        showAlert(`Error escalating record: ${error.message}`, 'error');
+        console.error('Error escalating file:', error);
+        alert('Error escalating file: ' + error.message);
     }
 }
 
@@ -563,18 +572,59 @@ async function submitEscalation() {
  */
 function updateEscalateButton() {
     const escalateButton = document.getElementById('escalateButton');
+    const notFoundButton = document.getElementById('notFoundButton');
     if (escalateButton) {
-        escalateButton.disabled = !currentFileName;
+        escalateButton.disabled = !currentFileName;  // Enable if we have a file loaded
+    }
+    if (notFoundButton) {
+        notFoundButton.disabled = !currentFileName;  // Enable if we have a file loaded
     }
 }
 
-// Add to your existing clearCurrentFile function
 function clearCurrentFile() {
-    // ... existing code ...
-    
-    // Reset escalation form
-    hideEscalationForm();
+    currentFileName = null;
+    currentData = null;
+    document.getElementById('recordDetails').innerHTML = '<div class="alert alert-info">Select a file to review</div>';
+    document.getElementById('orderIdInput').value = '';
+    document.getElementById('filemakerInput').value = '';
+    document.getElementById('saveButton').disabled = true;
     updateEscalateButton();
-    
-    // ... rest of existing code ...
+}
+
+/**
+ * Handle marking a record as not found
+ */
+async function markAsNotFound() {
+    if (!currentFileName) {
+        alert('No file selected');
+        return;
+    }
+
+    if (!confirm('Are you sure you want to mark this record as not found? This will move it to the review2 folder.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/unmapped/api/not_found', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                filename: currentFileName
+            })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            alert('File marked as not found and moved to review2 folder');
+            loadFiles();  // Refresh the file list
+            clearCurrentFile();  // Clear the current file display
+        } else {
+            throw new Error(result.error || 'Failed to mark file as not found');
+        }
+    } catch (error) {
+        console.error('Error marking file as not found:', error);
+        alert('Error marking file as not found: ' + error.message);
+    }
 }
